@@ -1,0 +1,240 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "conf-common",
+      "hidden": true,
+      "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/build/${presetName}",
+      "generator": "Ninja Multi-Config",
+      "debug": {
+        "output": true
+      }
+    },
+    {
+      "name": "conf-windows-common",
+      "description": "Windows settings for MSBuild toolchain that apply to msvc and clang",
+      "hidden": true,
+      "inherits": "conf-common",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "toolset": {
+        "value": "host=x64",
+        "strategy": "external"
+      }
+    },
+    {
+      "name": "conf-unixlike-common",
+      "description": "Unix-like OS settings for gcc and clang toolchains",
+      "hidden": true,
+      "inherits": "conf-common",
+      "condition": {
+        "type": "inList",
+        "string": "${hostSystemName}",
+        "list": [
+          "Linux",
+          "Darwin"
+        ]
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+          "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
+        }
+      }
+    },
+    {
+      "name": "windows-msvc-debug",
+      "displayName": "msvc Debug",
+      "description": "Target Windows with the msvc compiler, debug build type",
+      "hidden": true,
+      "inherits": "conf-windows-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "windows-msvc-debug-asan",
+      "displayName": "msvc Debug (ASAN)",
+      "description": "Target Windows with the msvc compiler, debug build type (address sanitizer)",
+      "inherits": "windows-msvc-debug",
+      "cacheVariables": {
+        "ASAN_ENABLED": true
+      }
+    },
+    {
+      "name": "windows-msvc-debug-tests",
+      "displayName": "msvc Debug (tests)",
+      "description": "Target Windows with the msvc compiler, debug build type (tests)",
+      "inherits": "windows-msvc-debug",
+      "cacheVariables": {
+        "WORD_CONVERTER_BUILD_TESTS": true
+      }
+    },
+    {
+      "name": "windows-msvc-debug-github",
+      "displayName": "msvc Debug (GitHub)",
+      "description": "Target Windows with the msvc compiler, debug build type (GitHub)",
+      "inherits": [
+        "windows-msvc-debug-asan",
+        "windows-msvc-debug-tests"
+      ]
+    },
+    {
+      "name": "windows-msvc-release",
+      "displayName": "msvc Release",
+      "description": "Target Windows with the msvc compiler, release build type",
+      "hidden": true,
+      "inherits": "conf-windows-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "windows-msvc-release-tests",
+      "displayName": "msvc Release (tests)",
+      "description": "Target Windows with the msvc compiler, release build type (tests)",
+      "inherits": "windows-msvc-release",
+      "cacheVariables": {
+        "WORD_CONVERTER_BUILD_TESTS": true
+      }
+    },
+    {
+      "name": "unixlike-gcc-debug",
+      "displayName": "gcc Debug",
+      "description": "Target Unix-like OS with the gcc compiler, debug build type",
+      "hidden": true,
+      "inherits": "conf-unixlike-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "unixlike-gcc-debug-asan",
+      "displayName": "gcc Debug (ASAN)",
+      "description": "Target Unix-like OS with the gcc compiler, debug build type (address sanitizer)",
+      "inherits": "unixlike-gcc-debug",
+      "cacheVariables": {
+        "ASAN_ENABLED": true
+      }
+    },
+    {
+      "name": "unixlike-gcc-debug-coverage",
+      "displayName": "gcc Debug (code coverage)",
+      "description": "Target Unix-like OS with the gcc compiler, debug build type (code coverage)",
+      "inherits": "unixlike-gcc-debug",
+      "cacheVariables": {
+        "CODE_COVERAGE": true
+      }
+    },
+    {
+      "name": "unixlike-gcc-debug-tests",
+      "displayName": "gcc Debug (tests)",
+      "description": "Target Unix-like OS with the gcc compiler, debug build type (tests)",
+      "inherits": "unixlike-gcc-debug",
+      "cacheVariables": {
+        "WORD_CONVERTER_BUILD_TESTS": true
+      }
+    },
+    {
+      "name": "unixlike-gcc-debug-github",
+      "displayName": "gcc Debug (GitHub)",
+      "description": "Target Unix-like OS with the gcc compiler, debug build type (GitHub)",
+      "inherits": [
+        "unixlike-gcc-debug-asan",
+        "unixlike-gcc-debug-coverage",
+        "unixlike-gcc-debug-tests"
+      ]
+    },
+    {
+      "name": "unixlike-gcc-release",
+      "displayName": "gcc Release",
+      "description": "Target Unix-like OS with the gcc compiler, release build type",
+      "hidden": true,
+      "inherits": "conf-unixlike-common",
+      "cacheVariables": {
+        "BUILD_TESTING": false,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "unixlike-gcc-release-tests",
+      "displayName": "gcc Release (tests)",
+      "description": "Target Unix-like OS with the gcc compiler, release build type (tests)",
+      "inherits": "unixlike-gcc-release",
+      "cacheVariables": {
+        "WORD_CONVERTER_BUILD_TESTS": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc-debug-tests",
+      "configurePreset": "windows-msvc-debug-tests",
+      "displayName": "Build windows-msvc-debug-tests",
+      "description": "Build x64 Windows MSVC Debug (tests)",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "windows-msvc-debug-github",
+      "configurePreset": "windows-msvc-debug-github",
+      "displayName": "Build windows-msvc-debug-github",
+      "description": "Build x64 Windows MSVC Debug (GitHub)",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "windows-msvc-release-tests",
+      "configurePreset": "windows-msvc-release-tests",
+      "displayName": "Build windows-msvc-release-tests",
+      "description": "Build x64 Windows MSVC Release (tests)",
+      "configuration": "Release",
+      "verbose": true
+    },
+    {
+      "name": "unixlike-gcc-debug-tests",
+      "configurePreset": "unixlike-gcc-debug-tests",
+      "displayName": "Build unixlike-gcc-debug-tests",
+      "description": "Build x64 Unix-like OS gcc Debug (tests)",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "unixlike-gcc-debug-github",
+      "configurePreset": "unixlike-gcc-debug-github",
+      "displayName": "Build unixlike-gcc-debug-github",
+      "description": "Build x64 Unix-like OS gcc Debug (GitHub)",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "unixlike-gcc-release-tests",
+      "configurePreset": "unixlike-gcc-release-tests",
+      "displayName": "Build unixlike-gcc-release-tests",
+      "description": "Build x64 Unix-like OS gcc Release (tests)",
+      "configuration": "Release",
+      "verbose": true
+    }
+  ]
+}

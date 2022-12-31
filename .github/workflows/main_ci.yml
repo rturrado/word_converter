@@ -1,0 +1,137 @@
+# From: https://github.com/lukka/CppCMakeVcpkgTemplate/blob/main/.github/workflows/hosted-ninja-vcpkg_submod.yml
+#
+# The peculiarity of this workflow is that assumes vcpkg stored as a submodule of this repository.
+# This workflow does the following:
+# - Restores vcpkg artifacts from cache.
+# - Sets up vcpkg if needed, then run CMake with CMakePreset.json using a configuration that leverages the vcpkg's toolchain file.
+#   This will automatically run vcpkg to install dependencies described by the vcpkg.json manifest file.
+#   It will be a no-op if those are restored from cache.
+# - Finally builds the sources with Ninja.
+
+name: main CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  windows-msvc-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - uses: lukka/get-cmake@latest
+
+      # On Windows runners, let's ensure to have the Developer Command Prompt environment setup correctly
+      # As used here, the Developer Command Prompt created is targeting x64 and using the default the Windows SDK
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      # Run CMake to generate Ninja project files
+      - name: Configure and build tests
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'windows-msvc-debug-github'
+          buildPreset: 'windows-msvc-debug-github'
+
+      - name: Run tests
+        working-directory: ${{github.workspace}}/out/build/windows-msvc-debug-github
+        run: ctest -C Debug --output-on-failure
+        shell: bash
+
+  windows-msvc-benchmark:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - uses: lukka/get-cmake@latest
+
+      # On Windows runners, let's ensure to have the Developer Command Prompt environment setup correctly
+      # As used here, the Developer Command Prompt created is targeting x64 and using the default the Windows SDK
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      # Run CMake to generate Ninja project files
+      - name: Configure and build benchmarks
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'windows-msvc-release-github'
+          buildPreset: 'windows-msvc-release-github'
+
+      - name: Run benchmarks
+        working-directory: ${{github.workspace}}
+        run: ./out/build/windows-msvc-release-github/benchmark/Release/the_modern_c++_challenge_benchmark.exe
+        shell: bash
+
+  unixlike-gcc-debug-github:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install gcc-12 and g++-12, and linux-headers
+        run: |
+          sudo apt update && sudo apt upgrade
+          sudo apt install gcc-12 g++-12 linux-headers-$(uname -r)
+          sudo update-alternatives \
+              --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 \
+              --slave /usr/bin/g++ g++ /usr/bin/g++-12 \
+              --slave /usr/bin/gcov gcov /usr/bin/gcov-12
+        shell: bash
+
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Get latest CMake
+        uses: lukka/get-cmake@latest
+
+      # Run CMake to generate Ninja project files
+      - name: Configure and build tests in debug mode
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'unixlike-gcc-debug-github'
+          buildPreset: 'unixlike-gcc-debug-github'
+
+      - name: Run tests
+        working-directory: ${{ github.workspace }}/out/build/unixlike-gcc-debug-github
+        run: |
+          export ASAN_OPTIONS=detect_odr_violation=0
+          ctest -C Debug --output-on-failure
+        shell: bash
+
+      - name: Collect code coverage
+        working-directory: ${{ github.workspace }}/out/build/unixlike-gcc-debug-github
+        run: bash <(curl -s https://codecov.io/bash)
+        shell: bash
+
+  unixlike-gcc-release-docker:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install gcc-12 and g++-12, and linux-headers
+        run: |
+          sudo apt update && sudo apt upgrade
+          sudo apt install gcc-12 g++-12 linux-headers-$(uname -r)
+          sudo update-alternatives \
+              --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 \
+              --slave /usr/bin/g++ g++ /usr/bin/g++-12 \
+              --slave /usr/bin/gcov gcov /usr/bin/gcov-12
+        shell: bash
+
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Get latest CMake
+        uses: lukka/get-cmake@latest
+
+      # Run CMake to generate Ninja project files
+      - name: Configure and build benchmarks and tests in release mode
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'unixlike-gcc-release-tests'
+          buildPreset: 'unixlike-gcc-release-tests'

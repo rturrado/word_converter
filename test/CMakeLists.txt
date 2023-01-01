@@ -13,6 +13,8 @@ FetchContent_MakeAvailable(
 # Test sources
 set(test_sources
     "${CMAKE_CURRENT_SOURCE_DIR}/command_line_parser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/input_reader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/output_writer.cpp"
 )
 set(app_sources
     "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
@@ -79,4 +81,13 @@ include(GoogleTest)
 gtest_add_tests(TARGET ${PROJECT_NAME}_test
     SOURCES ${test_sources}
     EXTRA_ARGS ${PROJECT_SOURCE_DIR}/res
+)
+
+
+# Resource dir
+# Copy <source dir>/res to <binary dir>/res
+add_custom_target(resources ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/res
+    DEPENDS ${PROJECT_NAME}_test
+    COMMENT "copying resources folder from ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/res"
 )

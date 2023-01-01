@@ -1,7 +1,11 @@
 #include "command_line_parser.h"
+#include "input_reader.h"
+#include "output_writer.h"
 
 #include <exception>
 #include <iostream>  // cout
+#include <memory>  // unique_ptr
+#include <vector>
 
 using namespace wc::clp;
 
@@ -18,9 +22,24 @@ void print_usage(std::ostream& os) {
 }
 
 
-int main_impl(int argc, const char** argv, std::ostream& os) {
+int main_impl(std::ostream& os, int argc, const char** argv) {
     try {
+        // Parse command line options
         auto options{ command_line_parser::parse(argc, argv) };
+
+        // Create a reader and a list of writers
+        auto input_reader{ std::make_unique<file_reader>(options.input_file) };
+        using output_writer_list = std::vector<std::unique_ptr<output_writer>>;
+        output_writer_list output_writers{};
+        output_writers.push_back(std::make_unique<stream_writer>(std::cout));
+        if (options.output_file) {
+            output_writers.push_back(std::make_unique<file_writer>(options.output_file.value()));
+        }
+
+        /*
+        // Read in text, convert it, and write it out
+        converter::run(input_reader, output_writers);
+        */
     } catch (const std::exception& ex) {
         os << "Error: " << ex.what() << "\n\n";
         print_usage(os);
@@ -31,5 +50,5 @@ int main_impl(int argc, const char** argv, std::ostream& os) {
 
 
 int main(int argc, const char** argv) {
-    return main_impl(argc, argv, std::cout);
+    return main_impl(std::cout, argc, argv);
 }

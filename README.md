@@ -211,3 +211,30 @@ Or:
 
 ## Implementation details
 
+### Project structure
+
+- An `include/word_converter` folder with all the includes.
+- A `res` folder with the resource files.
+- A `src` folder with the source files.
+- A `test` folder with the test files.
+- After a build, an `out/build` folder is also created.
+
+The implementation of each class is done at the header files. This leaves us with only one source file, `main.cpp`.
+The `test` folder contains a `main.cpp` and one source file for each header file in `include/word_converter`.
+
+There is a `CMakeLists.txt` file at the root of the project, and at the root of `src` and `test` folders.
+CMake presets are also used via a `CMakePresets.json` file.
+
+### Architecture
+
+The `main` function logic is quite simple:
+- Parse the command line options.
+- Create an input reader.
+- Create a stream output writer (that will write to standard output), and, if requested by the user, a file output writer.
+- Call convert, passing the reader and the writers.
+
+Exceptions thrown whether during the parsing of the command line options, or while creating the reader or the writers, are captured, and make the program terminate.
+
+Both readers and writers are implemented as runtime polymorphic objects. A pure virtual base class, e.g. `input_reader` defines an interface, and concrete classes, e.g. `file_reader`, implement that interface.
+
+Using polymorphic readers is not mandatory for the task, but makes the implementation symmetric to that of the writers. Apart from the fact that opens the possibility to read the input directly as a string from the command line, which is useful for testing.

@@ -1,3 +1,6 @@
+set(include_dir ${PROJECT_SOURCE_DIR}/include/${PROJECT_NAME})
+
+
 # Packages
 include(FetchContent)
 FetchContent_Declare(googletest
@@ -25,9 +28,12 @@ list(APPEND app_sources ${test_sources})
 
 # Test executable
 add_executable(${PROJECT_NAME}_test ${app_sources})
+target_include_directories(${PROJECT_NAME}_test PUBLIC
+    "$<BUILD_INTERFACE:${include_dir}>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
 target_compile_features(${PROJECT_NAME}_test PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME}_test PRIVATE
-    lib_${PROJECT_NAME}
     gmock
     gtest
 )
@@ -51,6 +57,7 @@ endif()
 if(CODE_COVERAGE)
     if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
         target_compile_options(${PROJECT_NAME}_test PRIVATE -fprofile-arcs -ftest-coverage)
+        target_link_libraries(${PROJECT_NAME}_test PRIVATE gcov)
         target_link_options(${PROJECT_NAME}_test PRIVATE -fprofile-arcs -ftest-coverage)
     endif()
 endif()

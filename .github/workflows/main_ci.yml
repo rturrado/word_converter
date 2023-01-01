@@ -18,12 +18,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  windows-msvc-test:
+  windows-msvc-debug-github:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - uses: lukka/get-cmake@latest
 
@@ -43,12 +41,10 @@ jobs:
         run: ctest -C Debug --output-on-failure
         shell: bash
 
-  windows-msvc-benchmark:
+  windows-msvc-release-tests:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - uses: lukka/get-cmake@latest
 
@@ -60,12 +56,12 @@ jobs:
       - name: Configure and build benchmarks
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'windows-msvc-release-github'
-          buildPreset: 'windows-msvc-release-github'
+          configurePreset: 'windows-msvc-release-tests'
+          buildPreset: 'windows-msvc-release-tests'
 
-      - name: Run benchmarks
-        working-directory: ${{github.workspace}}
-        run: ./out/build/windows-msvc-release-github/benchmark/Release/the_modern_c++_challenge_benchmark.exe
+      - name: Run tests
+        working-directory: ${{github.workspace}}/out/build/windows-msvc-release-tests
+        run: ctest -C Release --output-on-failure
         shell: bash
 
   unixlike-gcc-debug-github:
@@ -83,8 +79,6 @@ jobs:
 
       - name: Check out repository
         uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - name: Get latest CMake
         uses: lukka/get-cmake@latest
@@ -108,7 +102,7 @@ jobs:
         run: bash <(curl -s https://codecov.io/bash)
         shell: bash
 
-  unixlike-gcc-release-docker:
+  unixlike-gcc-release-tests:
     runs-on: ubuntu-22.04
     steps:
       - name: Install gcc-12 and g++-12, and linux-headers
@@ -123,8 +117,6 @@ jobs:
 
       - name: Check out repository
         uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - name: Get latest CMake
         uses: lukka/get-cmake@latest
@@ -135,3 +127,10 @@ jobs:
         with:
           configurePreset: 'unixlike-gcc-release-tests'
           buildPreset: 'unixlike-gcc-release-tests'
+
+      - name: Run tests
+        working-directory: ${{ github.workspace }}/out/build/unixlike-gcc-release-tests
+        run: |
+          export ASAN_OPTIONS=detect_odr_violation=0
+          ctest -C Release --output-on-failure
+        shell: bash

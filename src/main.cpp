@@ -1,4 +1,5 @@
 #include "command_line_parser.h"
+#include "converter.h"
 #include "input_reader.h"
 #include "output_writer.h"
 
@@ -29,17 +30,14 @@ int main_impl(std::ostream& os, int argc, const char** argv) {
 
         // Create a reader and a list of writers
         auto input_reader{ std::make_unique<file_reader>(options.input_file) };
-        using output_writer_list = std::vector<std::unique_ptr<output_writer>>;
-        output_writer_list output_writers{};
+        output_writer_up_list output_writers{};
         output_writers.push_back(std::make_unique<stream_writer>(std::cout));
         if (options.output_file) {
             output_writers.push_back(std::make_unique<file_writer>(options.output_file.value()));
         }
 
-        /*
         // Read in text, convert it, and write it out
-        converter::run(input_reader, output_writers);
-        */
+        converter::run(std::move(input_reader), output_writers);
     } catch (const std::exception& ex) {
         os << "Error: " << ex.what() << "\n\n";
         print_usage(os);

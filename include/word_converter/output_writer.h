@@ -21,9 +21,13 @@ class output_writer {
 public:
     virtual ~output_writer() = default;
 
+    void write(const std::string& text) {
+        auto& os{ get_ostream() };
+        os << text;
+    }
     void write_sentence(const std::string& sentence) {
         auto& os{ get_ostream() };
-        os << sentence;
+        os << sentence << ".";
     }
 };
 

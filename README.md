@@ -1,5 +1,5 @@
 [![main CI](https://github.com/rturrado/word_converter/actions/workflows/main_ci.yml/badge.svg)](https://github.com/rturrado/word_converter/actions/workflows/main_ci.yml)
-[![codecov](https://codecov.io/github/rturrado/word_converter/branch/unixlike-builds/graph/badge.svg?token=GAF6OX0ZVE)](https://codecov.io/github/rturrado/word_converter)
+[![codecov](https://codecov.io/gh/rturrado/word_converter/branch/main/graph/badge.svg?token=ZWGPNDS1TZ)](https://codecov.io/gh/rturrado/word_converter)
 
 # Word Converter
 

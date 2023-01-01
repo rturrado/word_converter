@@ -56,39 +56,17 @@ if(CODE_COVERAGE)
 endif()
 
 
-# Shared libraries
-if(WIN32)
-    # Copy DLLs the target depends on
-    add_custom_command(
-        TARGET ${PROJECT_NAME}_test POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}_test> $<TARGET_FILE_DIR:${PROJECT_NAME}_test>
-        COMMAND_EXPAND_LISTS
-    )
-elseif(UNIX)
-    if(APPLE)
-        set(CMAKE_MACOSX_RPATH 1)
-    endif()
-    set_target_properties(${PROJECT_NAME}_test PROPERTIES
-        SKIP_BUILD_RPATH FALSE
-        BUILD_WITH_INSTALL_RPATH FALSE
-        INSTALL_RPATH ""
-        INSTALL_RPATH_USE_LINK_PATH FALSE
-        LINK_FLAGS "-Wl,-rpath,./"
-    )
-endif()
-
-
-include(GoogleTest)
-gtest_add_tests(TARGET ${PROJECT_NAME}_test
-    SOURCES ${test_sources}
-    EXTRA_ARGS ${PROJECT_SOURCE_DIR}/res
-)
-
-
 # Resource dir
 # Copy <source dir>/res to <binary dir>/res
 add_custom_target(resources ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/res
     DEPENDS ${PROJECT_NAME}_test
     COMMENT "copying resources folder from ${CMAKE_SOURCE_DIR}/res ${CMAKE_BINARY_DIR}/res"
+)
+
+
+include(GoogleTest)
+gtest_add_tests(TARGET ${PROJECT_NAME}_test
+    SOURCES ${test_sources}
+    EXTRA_ARGS ${PROJECT_SOURCE_DIR}/res
 )

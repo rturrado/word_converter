@@ -98,14 +98,9 @@ jobs:
         shell: bash
 
       - name: Collect code coverage
-      - uses: actions/checkout@master
-      - uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage1.xml,./coverage2.xml
-          flags: unittests
-          name: codecov-umbrella
-          verbose: true
+        working-directory: ${{ github.workspace }}/out/build/unixlike-gcc-debug-github
+        run: bash <(curl -s https://codecov.io/bash)
+        shell: bash
 
   unixlike-gcc-release-tests:
     runs-on: ubuntu-22.04

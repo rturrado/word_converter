@@ -6,7 +6,7 @@
 
 
 TEST(file_writer_constructor, could_not_create_file) {
-    EXPECT_THROW(std::make_unique<file_writer>("blah/foo.txt"), could_not_create_file_error);
+    EXPECT_THROW((void) std::make_unique<file_writer>("blah/foo.txt"), could_not_create_file_error);
 }
 
 TEST(stream_writer_write, write_empty_text) {

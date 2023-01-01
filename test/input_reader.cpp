@@ -7,7 +7,7 @@
 
 
 TEST(file_reader_constructor, file_is_not_a_regular_file) {
-    EXPECT_THROW(std::make_unique<file_reader>("foo.txt"), file_is_not_a_regular_file_error);
+    EXPECT_THROW((void) std::make_unique<file_reader>("foo.txt"), file_is_not_a_regular_file_error);
 }
 TEST(file_reader_read_sentence, empty_file) {
     std::unique_ptr<input_reader> file_reader_up{ std::make_unique<file_reader>("../res/empty_file.txt")};

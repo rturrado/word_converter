@@ -16,10 +16,17 @@ TEST(stream_writer_write, write_empty_text) {
     output_writer_up->write(text);
     EXPECT_TRUE(oss.str().empty());
 }
-TEST(stream_writer_write, write) {
+TEST(stream_writer_write, write_text) {
     std::ostringstream oss{};
     std::unique_ptr<output_writer> output_writer_up{ std::make_unique<stream_writer>(oss) };
     std::string text{ "blah" };
+    output_writer_up->write(text);
+    EXPECT_EQ(oss.str(), text);
+}
+TEST(stream_writer_write, write_text_with_period) {
+    std::ostringstream oss{};
+    std::unique_ptr<output_writer> output_writer_up{ std::make_unique<stream_writer>(oss) };
+    std::string text{ "blah." };
     output_writer_up->write(text);
     EXPECT_EQ(oss.str(), text);
 }
@@ -30,28 +37,10 @@ TEST(stream_writer_write, write_multiline_text) {
     output_writer_up->write(text);
     EXPECT_EQ(oss.str(), text);
 }
-
-TEST(stream_writer_write_sentence, write_empty_sentence) {
+TEST(stream_writer_write, write_multiline_text_with_period) {
     std::ostringstream oss{};
     std::unique_ptr<output_writer> output_writer_up{ std::make_unique<stream_writer>(oss) };
-    std::string sentence{};
-    std::string expected_sentence{ "." };
-    output_writer_up->write_sentence(sentence);
-    EXPECT_EQ(oss.str(), expected_sentence);
-}
-TEST(stream_writer_write_sentence, write_sentence) {
-    std::ostringstream oss{};
-    std::unique_ptr<output_writer> output_writer_up{ std::make_unique<stream_writer>(oss) };
-    std::string sentence{ "blah" };
-    std::string expected_sentence{ "blah." };
-    output_writer_up->write_sentence(sentence);
-    EXPECT_EQ(oss.str(), expected_sentence);
-}
-TEST(stream_writer_write_sentence, write_multiline_sentence) {
-    std::ostringstream oss{};
-    std::unique_ptr<output_writer> output_writer_up{ std::make_unique<stream_writer>(oss) };
-    std::string sentence{ "blah\nfoo" };
-    std::string expected_sentence{ "blah\nfoo." };
-    output_writer_up->write_sentence(sentence);
-    EXPECT_EQ(oss.str(), expected_sentence);
+    std::string text{ "blah\nfoo." };
+    output_writer_up->write(text);
+    EXPECT_EQ(oss.str(), text);
 }

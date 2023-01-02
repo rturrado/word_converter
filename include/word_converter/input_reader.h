@@ -21,10 +21,19 @@ class input_reader {
 public:
     virtual ~input_reader() = default;
 
-    std::string read_sentence() {
+    // Read a sentence, i.e. until a period is found
+    // or until the end of file, if no period is found
+    std::string read() {
         auto& is{ get_istream() };
         std::string sentence{};
         std::getline(is, sentence, '.');
+        // It could happen that the last text in the stream does not end with a period
+        // In that case, no period is added to the read text
+        // Otherwise, std::getline stopped when finding a period
+        // In that case, the period is added back to the read text
+        if (not is.eof()) {
+            sentence += ".";
+        }
         return sentence;
     }
     auto eof() { return get_istream().eof(); }

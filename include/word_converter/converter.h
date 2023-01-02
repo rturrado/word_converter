@@ -62,17 +62,14 @@ public:
     {}
 
     void run(input_reader_up reader, output_writer_up_list& writers) {
-        for (std::string sentence{};;) {
-            sentence = reader->read_sentence();
-            if (reader->eof()) {  // input stream empty
-                if (not sentence.empty()) {  // or ending with something other than a period
-                    std::ranges::for_each(writers, [&sentence](auto& writer) { writer->write(sentence); });
-                }
-                break;
-            } else {  // sentence read
+        for (std::string sentence{}; not reader->eof();) {
+            sentence = reader->read();
+            // Texts that do not form a sentence (i.e. that do not end in a period) are not converted
+            if (sentence.ends_with('.')) {
                 sentence = converter_->convert(sentence);
-                std::ranges::for_each(writers, [&sentence](auto& writer) { writer->write_sentence(sentence); });
             }
+            // All the texts are written out though
+            std::ranges::for_each(writers, [&sentence](auto& writer) { writer->write(sentence); });
         }
     }
 };

@@ -56,7 +56,7 @@ elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STR
 endif()
 if(CODE_COVERAGE)
     if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-        target_compile_options(${PROJECT_NAME}_test PRIVATE -fprofile-arcs -ftest-coverage)
+        target_compile_options(${PROJECT_NAME}_test PRIVATE -O0 -fprofile-arcs -ftest-coverage)
         target_link_libraries(${PROJECT_NAME}_test PRIVATE gcov)
         target_link_options(${PROJECT_NAME}_test PRIVATE -fprofile-arcs -ftest-coverage)
     endif()

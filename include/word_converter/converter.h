@@ -46,14 +46,17 @@ private:
     static auto is_word_number(const std::string& token) {
         return word_to_number_map.contains(token);
     }
-    static auto is_space_word_number_connector(const std::string& token) {
-        return std::ranges::all_of(token, [](unsigned char c) { return std::isspace(c); });
+    static auto all_of_character_connector(const std::string& token) {
+        return std::ranges::all_of(token, [](unsigned char c) {
+            return
+                c == '-' or
+                std::isspace(c);
+        });
     }
-    static auto is_allowed_word_number_connector(const std::string& token) {
+    static auto is_allowed_connector(const std::string& token) {
         return
             token == "and" or
-            token == "-" or
-            is_space_word_number_connector(token);
+            all_of_character_connector(token);
     }
     void collapse_top_tokens(int new_token) {
         auto pos{ std::ssize(queue_) - 1 };
@@ -78,7 +81,7 @@ private:
         // last connector before push -> last connector after push
         auto& top_token{ queue_.back() };
         if (top_token < token) {
-            if (is_space_word_number_connector(last_connector_)) {
+            if (all_of_character_connector(last_connector_)) {
                 // "thousand" -> ""
                 // 3, 600     -> 603000
                 // " "        -> ""
@@ -127,7 +130,7 @@ public:
             return push_token(token);
         }
         // Space or "and"
-        if (is_allowed_word_number_connector(token)) {
+        if (is_allowed_connector(token)) {
             if (queue_.empty()) {
                 return token;
             }

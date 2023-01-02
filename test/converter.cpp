@@ -2,6 +2,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <iterator>  // istreambuf_iterator
 #include <memory>
 
 
@@ -63,6 +64,30 @@ TEST(converter_run, text_with_multiline_sentence) {
     conversion_manager manager{std::make_unique<word_to_number_converter>() };
     manager.run(std::move(reader), writers);
     EXPECT_EQ(oss.str(), text);
+}
+TEST(converter_run, in_1_txt) {
+    std::unique_ptr<input_reader> reader{ std::make_unique<file_reader>("../../res/in_1.txt") };
+    std::ostringstream oss{};
+    std::unique_ptr<output_writer> writer{ std::make_unique<stream_writer>(oss) };
+    output_writer_up_list writers{};
+    writers.push_back(std::move(writer));
+    conversion_manager manager{std::make_unique<word_to_number_converter>() };
+    manager.run(std::move(reader), writers);
+    std::ifstream expected_output_ifs{ "../../res/out_1.txt" };
+    std::string expected_output_str{ std::istreambuf_iterator{ expected_output_ifs }, {} };
+    EXPECT_EQ(oss.str(), expected_output_str);
+}
+TEST(converter_run, in_2_txt) {
+    std::unique_ptr<input_reader> reader{ std::make_unique<file_reader>("../../res/in_2.txt") };
+    std::ostringstream oss{};
+    std::unique_ptr<output_writer> writer{ std::make_unique<stream_writer>(oss) };
+    output_writer_up_list writers{};
+    writers.push_back(std::move(writer));
+    conversion_manager manager{std::make_unique<word_to_number_converter>() };
+    manager.run(std::move(reader), writers);
+    std::ifstream expected_output_ifs{ "../../res/out_2.txt" };
+    std::string expected_output_str{ std::istreambuf_iterator{ expected_output_ifs }, {} };
+    EXPECT_EQ(oss.str(), expected_output_str);
 }
 
 

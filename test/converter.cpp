@@ -66,100 +66,238 @@ TEST(converter_run, text_with_multiline_sentence) {
 }
 
 
-TEST(convert, zero) {
-    EXPECT_EQ(word_to_number_converter{}.convert("zero"), "0");
+TEST(parse, zero) {
+    word_to_number_converter c{};
+    (void) c.parse("zero");
+    EXPECT_EQ(c.parse("."), "0.");
 }
-TEST(convert, one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one"), "1");
+TEST(parse, one) {
+    word_to_number_converter c{};
+    (void) c.parse("one");
+    EXPECT_EQ(c.parse("."), "1.");
 }
-TEST(convert, nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("nine"), "9");
+TEST(parse, nine) {
+    word_to_number_converter c{};
+    (void) c.parse("nine");
+    EXPECT_EQ(c.parse("."), "9.");
 }
-TEST(convert, ten) {
-    EXPECT_EQ(word_to_number_converter{}.convert("ten"), "10");
+TEST(parse, ten) {
+    word_to_number_converter c{};
+    (void) c.parse("ten");
+    EXPECT_EQ(c.parse("."), "10.");
 }
-TEST(convert, nineteen) {
-    EXPECT_EQ(word_to_number_converter{}.convert("nineteen"), "19");
+TEST(parse, nineteen) {
+    word_to_number_converter c{};
+    (void) c.parse("nineteen");
+    EXPECT_EQ(c.parse("."), "19.");
 }
-TEST(convert, twenty) {
-    EXPECT_EQ(word_to_number_converter{}.convert("twenty"), "20");
+TEST(parse, twenty) {
+    word_to_number_converter c{};
+    (void) c.parse("twenty");
+    EXPECT_EQ(c.parse("."), "20.");
 }
-TEST(convert, twenty_one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("twenty one"), "21");
+TEST(parse, twenty_one) {
+    word_to_number_converter c{};
+    (void) c.parse("twenty");
+    (void) c.parse(" ");
+    (void) c.parse("one");
+    EXPECT_EQ(c.parse("."), "21.");
 }
-TEST(convert, twenty_dash_one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("twenty-one"), "21");
+TEST(parse, twenty_dash_one) {
+    word_to_number_converter c{};
+    (void) c.parse("twenty");
+    (void) c.parse("-");
+    (void) c.parse("one");
+    EXPECT_EQ(c.parse("."), "21.");
 }
-TEST(convert, twenty_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("twenty nine"), "29");
+TEST(parse, twenty_nine) {
+    word_to_number_converter c{};
+    (void) c.parse("twenty");
+    (void) c.parse(" ");
+    (void) c.parse("nine");
+    EXPECT_EQ(c.parse("."), "29.");
 }
-TEST(convert, twenty_dash_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("twenty-nine"), "29");
+TEST(parse, twenty_dash_nine) {
+    word_to_number_converter c{};
+    (void) c.parse("twenty");
+    (void) c.parse("-");
+    (void) c.parse("nine");
+    EXPECT_EQ(c.parse("."), "29.");
 }
-TEST(convert, ninety) {
-    EXPECT_EQ(word_to_number_converter{}.convert("ninety"), "90");
+TEST(parse, ninety) {
+    word_to_number_converter c{};
+    (void) c.parse("ninety");
+    EXPECT_EQ(c.parse("."), "90.");
 }
-TEST(convert, ninety_one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("ninety one"), "91");
+TEST(parse, ninety_one) {
+    word_to_number_converter c{};
+    (void) c.parse("ninety");
+    (void) c.parse(" ");
+    (void) c.parse("one");
+    EXPECT_EQ(c.parse("."), "91.");
 }
-TEST(convert, ninety_dash_one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("ninety-one"), "91");
+TEST(parse, ninety_dash_one) {
+    word_to_number_converter c{};
+    (void) c.parse("ninety");
+    (void) c.parse("-");
+    (void) c.parse("one");
+    EXPECT_EQ(c.parse("."), "91.");
 }
-TEST(convert, ninety_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("ninety nine"), "99");
+TEST(parse, ninety_nine) {
+    word_to_number_converter c{};
+    (void) c.parse("ninety");
+    (void) c.parse(" ");
+    (void) c.parse("nine");
+    EXPECT_EQ(c.parse("."), "99.");
 }
-TEST(convert, ninety_dash_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("ninety-nine"), "99");
+TEST(parse, ninety_dash_nine) {
+    word_to_number_converter c{};
+    (void) c.parse("ninety");
+    (void) c.parse("-");
+    (void) c.parse("nine");
+    EXPECT_EQ(c.parse("."), "99.");
 }
-TEST(convert, one_hundred) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one hundred"), "100");
+TEST(parse, one_hundred) {
+    word_to_number_converter c{};
+    (void) c.parse("one");
+    (void) c.parse(" ");
+    (void) c.parse("hundred");
+    EXPECT_EQ(c.parse("."), "100.");
 }
-TEST(convert, one_hundred_and_one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one hundred and one"), "101");
+TEST(parse, one_hundred_and_one) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one hundred and one." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "101.");
 }
-TEST(convert, one_hundred_and_ninety) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one hundred and ninety"), "190");
+TEST(parse, one_hundred_and_ninety) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one hundred and ninety." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "190.");
 }
-TEST(convert, one_hundred_and_ninety_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one hundred and ninety nine"), "199");
+TEST(parse, one_hundred_and_ninety_nine) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one hundred and ninety nine." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "199.");
 }
-TEST(convert, one_hundred_and_ninety_dash_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one hundred and ninety-nine"), "199");
+TEST(parse, one_hundred_and_ninety_dash_nine) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one hundred and ninety-nine." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "199.");
 }
-TEST(convert, nine_hundred) {
-    EXPECT_EQ(word_to_number_converter{}.convert("nine hundred"), "900");
+TEST(parse, nine_hundred) {
+    word_to_number_converter c{};
+    (void) c.parse("nine");
+    (void) c.parse(" ");
+    (void) c.parse("hundred");
+    EXPECT_EQ(c.parse("."), "900.");
 }
-TEST(convert, nine_hundred_and_one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("nine hundred and one"), "901");
+TEST(parse, nine_hundred_and_one) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "nine hundred and one." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "901.");
 }
-TEST(convert, nine_hundred_and_ninety) {
-    EXPECT_EQ(word_to_number_converter{}.convert("nine hundred and ninety"), "990");
+TEST(parse, nine_hundred_and_ninety) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "nine hundred and ninety." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "990.");
 }
-TEST(convert, nine_hundred_and_ninety_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("nine hundred and ninety nine"), "999");
+TEST(parse, nine_hundred_and_ninety_nine) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "nine hundred and ninety nine." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "999.");
 }
-TEST(convert, nine_hundred_and_ninety_dash_nine) {
-    EXPECT_EQ(word_to_number_converter{}.convert("nine hundred and ninety-nine"), "999");
+TEST(parse, nine_hundred_and_ninety_dash_nine) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "nine hundred and ninety-nine." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "999.");
 }
-TEST(convert, one_thousand) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one thousand"), "1000");
+TEST(parse, one_thousand) {
+    word_to_number_converter c{};
+    (void) c.parse("one");
+    (void) c.parse(" ");
+    (void) c.parse("thousand");
+    EXPECT_EQ(c.parse("."), "1000.");
 }
-TEST(convert, one_million) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one million"), "1000000");
+TEST(parse, one_million) {
+    word_to_number_converter c{};
+    (void) c.parse("one");
+    (void) c.parse(" ");
+    (void) c.parse("million");
+    EXPECT_EQ(c.parse("."), "1000000.");
 }
-TEST(convert, one_billion) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one billion"), "1000000000");
+TEST(parse, one_billion) {
+    word_to_number_converter c{};
+    (void) c.parse("one");
+    (void) c.parse(" ");
+    (void) c.parse("billion");
+    EXPECT_EQ(c.parse("."), "1000000000.");
 }
-TEST(convert, three_million_six_hundred_and_three_thousand_eight_hundred_and_two) {
-    EXPECT_EQ(word_to_number_converter{}.convert("three million six hundred and three thousand eight hundred and two"), "3603802");
+TEST(parse, three_million_six_hundred_and_three_thousand_eight_hundred_and_two) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "three million six hundred and three thousand eight hundred and two." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "3603802.");
 }
-TEST(convert, seven_million_five_hundred_and_twelve_thousand_one_hundred_and_forty_dash_five) {
-    EXPECT_EQ(word_to_number_converter{}.convert("seven million five hundred and twelve thousand one hundred and forty-five"), "7512145");
+TEST(parse, seven_million_five_hundred_and_twelve_thousand_one_hundred_and_forty_dash_five) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "seven million five hundred and twelve thousand one hundred and forty-five." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "7512145.");
 }
-TEST(convert, three_million_eight_hundred_thousand_and_eighteen) {
-    EXPECT_EQ(word_to_number_converter{}.convert("three million eight hundred thousand and eighteen"), "3800018");
+TEST(parse, three_million_eight_hundred_thousand_and_eighteen) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "three million eight hundred thousand and eighteen." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "3800018.");
 }
 
-TEST(convert, one_hundred_comma_and_one) {
-    EXPECT_EQ(word_to_number_converter{}.convert("one hundred, and one"), "100, and 1");
+TEST(parse, one_hundred_comma_and_one) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one hundred, and one." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "100, and 1.");
 }

@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>  // runtime_error
 
 namespace fs = std::filesystem;
 

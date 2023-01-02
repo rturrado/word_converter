@@ -29,16 +29,6 @@ inline static const std::unordered_map<std::string, int> word_to_number_map{
 };
 
 
-struct unexpected_token_error : public std::runtime_error {
-    explicit unexpected_token_error(const std::string& token) : std::runtime_error{ "" } {
-        message_ = message_ + "'" + token + "'";
-    }
-    [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); };
-private:
-    std::string message_{ "unexpected token: " };
-};
-
-
 class converter {
 public:
     virtual ~converter() = default;
@@ -65,26 +55,42 @@ private:
             token == "-" or
             is_space_word_number_connector(token);
     }
+    void collapse_top_tokens(int new_token) {
+        auto pos{ std::ssize(queue_) - 1 };
+        for (auto prev{ pos - 1 }; pos > 0 and prev >= 0; --pos, --prev) {
+            auto sum_of_last_two{ queue_[prev] + queue_[pos] };
+            if (sum_of_last_two < new_token) {
+                queue_[prev] = sum_of_last_two;
+            } else {
+                break;
+            }
+        }
+        queue_.resize(pos + 1);
+    }
     std::string push_token(const std::string& token_str) {
         auto token{ word_to_number_map.at(token_str) };
         if (queue_.empty()) {
             queue_.emplace_back(token);
             return {};
         }
-        // input             -> output
-        // queue before push -> queue after push
+        // token_str                  -> ret
+        // queue before push          -> queue after push
+        // last connector before push -> last connector after push
         auto& top_token{ queue_.back() };
         if (top_token < token) {
             if (is_space_word_number_connector(last_connector_)) {
-                // "hundred" -> ""
-                // (1, " ")   -> (100, "")
-                top_token *= token;
+                // "thousand" -> ""
+                // 3, 600     -> 603000
+                // " "        -> ""
+                collapse_top_tokens(token);
+                queue_.back() *= token;
                 last_connector_.clear();
                 return {};
-                // Not checking here for semantic errors such as: 'two ninety'
+                // TODO: not checking here for semantic errors such as: 'two ninety'
             }
-            // "hundred"    -> "1 and "
-            // (1, " and ") -> (100, "")
+            // "hundred" -> "1 and "
+            // 1         -> 100
+            // " and "   -> ""
             auto ret{ std::to_string(top_token) };
             queue_.back() = token;
             last_connector_.clear();
@@ -92,17 +98,17 @@ private:
         }
         // top_token.number >= token
         //
-        // "ninety"       -> ""
-        //                   ( 90, "")
-        // (100, " and ") -> (100, "")
+        // "ninety" -> ""
+        // 100      -> 100, 90
+        // " and "  -> ""
         //
-        // "ninety"  -> ""
-        //              ( 90, "")
-        // (100, "") -> (100, "")
+        // "ninety" -> ""
+        // 100      -> 100, 90
+        // ""       -> ""
         queue_.emplace_back(token);
         last_connector_.clear();
         return {};
-        // Not checking here for semantic errors such as: 'hundred hundred'
+        // TODO: not checking here for semantic errors such as: 'hundred hundred'
     }
     [[nodiscard]] std::string pop_all_tokens() {
         if (queue_.empty()) {
@@ -141,6 +147,7 @@ public:
         : text_{ std::move(text) }
     {}
 
+    // TODO: not considering digit numbers as possible parts of a word number (e.g. 3 million)
     std::generator<std::string> get_next_token() {
         std::string ret{};
         std::regex word_pattern{ R"([a-zA-Z]+)" };
@@ -168,21 +175,19 @@ public:
 
     void run(input_reader_up reader, output_writer_up_list& writers) {
         while (not reader->eof()) {
-            std::string input_text{ reader->read() };
-            std::string output_text{};
+            std::string text{ reader->read() };
 
             // Texts that do not form a sentence (i.e. that do not end in a period) are not converted
-            if (input_text.ends_with('.')) {
-                tokenizer tokenizer{ input_text };
+            if (text.ends_with('.')) {
+                tokenizer tokenizer{ text };
+                text.clear();
                 for (const auto& token : tokenizer.get_next_token()) {
-                    output_text += converter_->parse(token);
+                    text += converter_->parse(token);
                 }
-            } else {
-                output_text = std::move(input_text);
             }
 
             // All the texts are written out though
-            std::ranges::for_each(writers, [&output_text](auto& writer) { writer->write(output_text); });
+            std::ranges::for_each(writers, [&text](auto& writer) { writer->write(text); });
         }
     }
 };

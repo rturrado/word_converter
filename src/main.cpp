@@ -29,7 +29,7 @@ int main_impl(std::ostream& os, int argc, const char** argv) {
         auto options{ command_line_parser::parse(argc, argv) };
 
         // Create a reader and a list of writers
-        auto input_reader{ std::make_unique<file_reader>(options.input_file) };
+        input_reader_up input_reader{ std::make_unique<file_reader>(options.input_file) };
         output_writer_up_list output_writers{};
         output_writers.push_back(std::make_unique<stream_writer>(std::cout));
         if (options.output_file) {
@@ -37,7 +37,8 @@ int main_impl(std::ostream& os, int argc, const char** argv) {
         }
 
         // Read in text, convert it, and write it out
-        converter::run(std::move(input_reader), output_writers);
+        conversion_manager manager{std::make_unique<word_to_number_converter>() };
+        manager.run(std::move(input_reader), output_writers);
     } catch (const std::exception& ex) {
         os << "Error: " << ex.what() << "\n\n";
         print_usage(os);

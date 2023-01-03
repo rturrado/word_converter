@@ -13,7 +13,8 @@ Converts all numbers English written into digits of the provided text.
 - **CMake**: required minimum version is 3.22.
 - **git**.
 
-Most of the required software can be installed from the [Visual Studio 2022 Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022&source=VSLandingPage&cid=2030&passive=false).
+Most of the required software can be installed from the
+[Visual Studio 2022 Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022&source=VSLandingPage&cid=2030&passive=false).
 
 - **Microsoft Visual C++ (MSVC) compiler toolset**: *Workloads* tab, *Desktop development with C++* item.
 - **CMake**: *Individual components* tab, *Compilers, build tools, and runtimes* section, *C++ CMake tools for Windows* item.
@@ -29,7 +30,8 @@ C:\projects> git clone https://github.com/rturrado/word_converter.git
 ### Config
 
 There are several options to run CMake from Visual Studio.
-- CMake should start automatically when choosing a *Configuration* and a *Build Preset* (e.g. `msvc Debug (tests)` and `Build windows-msvc-debug (tests)`) in the tool bar.
+- CMake should start automatically when choosing a *Configuration* and a *Build Preset* (e.g. `msvc Debug (tests)` and
+`Build windows-msvc-debug (tests)`) in the tool bar.
 - CMake can be started manually from the *Configure Cache* option in the *Project* menu.
 - Finally, CMake can also be started manually from a *Developer Command Prompt* (*Tools* menu, *Command Line* option):
 ```bash
@@ -77,7 +79,8 @@ C:\projects\word_converter> cmake --preset windows-msvc-debug-tests
 C:\projects\word_converter> cmake --build --preset windows-msvc-debug-tests
 ```
 
-You can run the test executable directly (notice **tests have to be run from the folder where the binary lives**, because they contain hardcoded paths to the resource folder):
+You can run the test executable directly (notice **tests have to be run from the folder where the binary lives**,
+because they contain hardcoded paths to the resource folder):
 ```bash
 C:\projects\word_converter\out\build\windows-msvc-debug-tests\test\Debug> .\word_converter_test.exe
 ```
@@ -188,7 +191,8 @@ Build with:
 ~/projects/word_converter> cmake --build --preset unixlike-gcc-debug-tests
 ```
 
-You can run the test executable directly (notice **tests have to be run from the folder where the binary lives**, because they contain hardcoded paths to the resource folder):
+You can run the test executable directly (notice **tests have to be run from the folder where the binary lives**,
+because they contain hardcoded paths to the resource folder):
 ```bash
 ~/projects/word_converter/out/build/unixlike-gcc-debug-tests/test/Debug> ./word_converter_test
 ```
@@ -221,7 +225,8 @@ Or:
 The implementation of each class is done at the header files.<br/>
 This leaves us with only one source file, `main.cpp`.<br/>
 The `test` folder contains a `main.cpp` and one source file for each header file in `include/word_converter`.<br/>
-The `res` folder contains files used by the tests. The test binary hardcodes a relative path to this resource directory, and, for that reason, it has to be run from the folder where the binary lives (e.g. `out/build/unixlike-gcc-debug-tests/test/Debug`).
+The `res` folder contains files used by the tests. The test binary hardcodes a relative path to this resource directory, and,
+for that reason, it has to be run from the folder where the binary lives (e.g. `out/build/unixlike-gcc-debug-tests/test/Debug`).
 
 There is a `CMakeLists.txt` file at the root of the project, and at the root of the `src` and `test` folders.<br/>
 CMake presets are also used via a `CMakePresets.json` file.
@@ -237,9 +242,12 @@ The `main` function logic is quite simple:
 - Creates a word to number converter, and, with it, a conversion manager.
 - Runs the conversion manager, passing it the reader and the writers.
 
-Exceptions thrown whether during the parsing of the command line options, or while creating the reader or the writers, are captured, and make the program terminate.<br/>
-Both readers and writers are implemented as runtime polymorphic objects. A pure virtual base class, e.g. `input_reader` defines an interface, and concrete classes, e.g. `file_reader`, implement that interface.
-Using polymorphic readers is not mandatory for the task, but makes the implementation symmetric to that of the writers. Apart from the fact that opens the possibility to read the input directly as a string from the command line, which is useful for testing.
+Exceptions thrown whether during the parsing of the command line options, or while creating the reader or the writers, are captured,
+and make the program terminate.<br/>
+Both readers and writers are implemented as runtime polymorphic objects. A pure virtual base class, e.g. `input_reader` defines an interface,
+and concrete classes, e.g. `file_reader`, implement that interface.
+Using polymorphic readers is not mandatory for the task, but makes the implementation symmetric to that of the writers.
+Apart from the fact that opens the possibility to read the input directly as a string from the command line, which is useful for testing.
 
 #### Command line parser
 
@@ -252,17 +260,21 @@ Using a library such as `boost/program_options` may have simplified the parsing.
 
 #### Input reader
 
-Three classes are defined in this file: a pure virtual base class, `input reader`, and two concrete clases, `file_reader` and `stream_reader`.<br/>
-Each concrete class holds an input stream: `file_reader` reads from a file, and holds a file stream; while `stream_reader` reads from any input stream. They also implement a virtual method to retrieve a reference to that stream<br/>
-Upon construction, `file_reader` receives a file path, and checks the path corresponds to a regular file. Otherwise, it throws a custom runtime error.<br/>
-The base class has a three-method public API: `read`, `eof`, and `fail`. `read` reads a sentence, i.e. until a period is found, or until the end of file, if no period is found, and returns it. `eof` and `fail` let a client check the input stream's state.
+Three classes are defined in this file: a pure virtual base class, `input reader`, and two concrete clases, `file_reader` and
+`stream_reader`.<br/>
+Each concrete class holds an input stream: `file_reader` reads from a file, and holds a file stream;
+while `stream_reader` reads from any input stream. They also implement a virtual method to retrieve a reference to that stream<br/>
+Upon construction, `file_reader` receives a file path, and checks that the path corresponds to a regular file. Otherwise,
+it throws a custom runtime error.<br/>
+The base class has a three-method public API: `read`, `eof`, and `fail`. `read` reads a sentence, i.e. until a period is found,
+or until the end of file, if no period is found, and returns it. `eof` and `fail` let a client check the input stream's state.
 
 #### Output writer
 
 The implementation of the writers is quite similar to that of the readers.<br/>
 There are also three classes: a pure virtual base class, `output_writer`, and two concrete classes, `file_writer` and `stream_writer`.
 Again, each concrete class holds a stream, in this case an output stream.<br/>
-The `file_writer` constructor just checks the file stream is good. It doesn't check the file already exists.
+The `file_writer` constructor just checks that the file stream is good. It doesn't check the file already exists.
 The base class just exposes one `write` method, which grabs the output stream and writes a text to it.
 
 #### Converter
@@ -281,8 +293,16 @@ The `conversion_manager`:
 It basically contains a `run` function that:
 - Keeps reading sentences from an `input_reader` until the end of the file is reached.
 - Texts that do not form a sentence (i.e. that do not end in a period) are not converted. All the texts are written out though.
-- For every input sentence that needs to be processed, tokens are retrieved via a `tokenizer`, sent to the `converter` for parsing, and the result of this conversion  appended to an output sentence.
+- For every input sentence that needs to be processed, tokens are retrieved via a `tokenizer`, sent to the `converter` for parsing,
+- and the result of this conversion  appended to an output sentence.
 - Once an input sentence has been processed, the output sentence is sent out to the different writers. 
+
+##### Tokenizer
+
+A `tokenizer` is constructed passing a text to be processed, and then called through `get_next_token`.<br/>
+This method is implemented as a coroutine. It repeatedly regex-searches for a word, and yields the suffix of the search,
+in case it is not empty, and the matched text.<br/>
+When no more matches are found, it yields the remaining text and returns.
 
 ##### Converter
 
@@ -291,60 +311,78 @@ A converter has a single-method public API, `parse`, which takes an input text, 
 
 ##### Word to number converter
 
-The `parse` implementation for the `word_to_number_converter` processes an input text sentence, where numbers can appear written as words, and returns an output text sentence, where numbers are written with digits. For example, it would translate `one hundred and one apples.` to `101 apples`. And it does so by receiving one token at a time.
+The `parse` implementation for the `word_to_number_converter` processes an input text sentence, where numbers can appear written as words,
+and returns an output text sentence, where numbers are written with digits.
+For example, it would translate `one hundred and one apples.` to `101 apples`. And it does so by receiving one token at a time.
+
+It makes use of a *stack of numbers*, and it also keeps track of the *last connector* between number tokens.
+
+A connector could be anything other than a word number that could appear in a *word number expression*
+(e.g. a whitespace, a dash, or the word `and`).
 
 It follows the logic below: 
-- It makes use of a *stack of numbers*, and it also keeps track of the *last connector* between number tokens.
-- A connector could be anything other than a word number that could appear in a *word number expression* (e.g. a whitespace, a dash, or the word `and`).
 - Whenever a token is identified as a number (e.g. `ninety`, or `billion`), it pushes it to the stack.
 - If it were a connector between numbers, it updates the *last connector*.
-- Otherwise, it considers the token as a splitter, i.e. something that marks the end of the *word number expression*. In this case, it adds up all the numbers remaining in the *stack*, converts them to a string, appends the *last connector* and the received token, and return the resultant string. All these actions are done by the `pop_all_numbers` method.
+- Otherwise, it considers the token as a splitter, i.e. something that marks the end of the *word number expression*.
+In this case, it adds up all the numbers remaining in the *stack*, converts them to a string,
+appends the *last connector* and the received token, and returns the resultant string.
+All these actions are done by the `pop_all_numbers` method.
 
 The `push_number` method has to deal with a few cases. For the descriptions below, let's consider the following information:
 ```
-input word number          -> push number returned string
+input word number          -> returned string
 stack before push          -> stack after push (top is at right)
 last connector before push -> last connector after push
 ```
 
-- 1: the stack is empty; the number is just pushed to the top.
-- 2a: a number bigger than the one at the top of the stack arrives, and only whitespaces separate this number from the previous one; the stack is collapsed until a bigger number is found.
+- 1: the stack is empty; the input number is just pushed to the top.
+- 2a: the input number is bigger than the one at the top of the stack, and only whitespaces separate this input number from the previous one;
+the stack is collapsed, and the new top number is multiplied by the input number.
 
-Collapsing the stack means to keep adding pairs of numbers, starting from the top, while the accumulated sum is smaller than the new number to be pushed onto the stack. This is done by the `collapse_stack` method.
+Collapsing the stack means to keep adding pairs of numbers, starting from the top,
+while the accumulated sum is smaller than the input number to be pushed onto the stack.
+This is done by the `collapse_stack` method.
 ```
-"thousand" -> ""
-600, 3     -> 603000
-" "        -> ""
+"thousand"      -> ""
+3000000, 600, 3 -> 3000000, 603000
+" "             -> ""
 ```
 
-- 2b: a number bigger than the one at the top of the stack arrives, and an *and-connector* separates this number from the previous one; the new number is treated as a new *expression*.
+- 2b: the input number is bigger than the one at the top of the stack, and an *and-connector* separates this input number from the previous one;
+the input number is treated as a new *expression*.
 ```
 "four"  -> "1 and "
 1       -> 4
 " and " -> ""
 ```
 
-- 3a: a number smaller than the one at the top of the stack arrives, and only whitespaces separate this number from the previous one; the new number is pushed to the stack.
+- 3a: the input number is smaller than the one at the top of the stack, and only whitespaces separate this input number from the previous one;
+the input number is pushed to the stack.
 ```
 "ninety" -> ""
 100      -> 100, 90
 " and "  -> ""
 ```
 
-- 3b: a number smaller than the one at the top of the stack arrives, and an *and-connector* separates this number from the previous one, and the number at the top of the stack admits an *and-connector* as part of a *word number expression*; the new number is added to the one at the top of the stack.
+- 3b: the input number is smaller than the one at the top of the stack, an *and-connector* separates this input number from the previous one,
+and the number at the top of the stack admits an *and-connector* as part of a *word number expression*;
+the input number is added to the one at the top of the stack.
 ```
 "four"  -> ""
 100     -> 104
 " and " -> ""
 ```
 
-- 3b': a number smaller than the one at the top of the stack arrives, and an *and-connector* separates this number from the previous one; and the number at the top of the stack does not admit an *and-connector* as part of a *word number expression*; the new number is treated as a new *expression*.
+- 3b': the input number is smaller than the one at the top of the stack, an *and-connector* separates this input number from the previous one,
+and the number at the top of the stack does not admit an *and-connector* as part of a *word number expression*;
+the input number is treated as a new *expression*.
 ```
 "four"  -> "8 and "
 8       -> 4
 " and " -> ""
 ```
 
-Notice `push_number` can return a string when it finds the input word number starts a new *word number expression*.
+Notice `push_number` can return a string when it finds the input number starts a new *word number expression*.
 
-The implementation of the `push_number` method looks quite complex and, much probably, error-prone, with a lot of cases and if-else blocks. A much better solution would probably be a proper parser, but that should also require the definition of a grammar for the *word number expressions*.
+The implementation of the `push_number` method looks quite complex, with a lot of cases and `if-else` blocks.
+A much better solution would probably be a proper parser, but that should also require the definition of a grammar for the *word number expressions*.

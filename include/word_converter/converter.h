@@ -78,6 +78,7 @@ private:
     std::string push_number(const std::string& number_str) {
         auto number{word_to_number_map.at(number_str) };
         // Case 1: the stack is empty
+        //         the input number is just pushed to the top
         if (stack_.empty()) {
             stack_.emplace_back(number);
             return {};
@@ -89,20 +90,20 @@ private:
         std::string ret{};
         if (top_number < number) {
             if (all_of_character_connector(last_connector_)) {
-                // Case 2a: a number bigger than the one at the top of the stack arrives,
-                //          and only whitespaces separate this number from the previous one;
-                //          the stack is collapsed until a bigger number is found
+                // Case 2a: the input number is bigger than the one at the top of the stack,
+                //          and only whitespaces separate this input number from the previous one;
+                //          the stack is collapsed, and the new top number is multiplied by the input number
                 //
-                // "thousand" -> ""
-                // 600, 3     -> 603000
-                // " "        -> ""
+                // "thousand"      -> ""
+                // 3000000, 600, 3 -> 3000000, 603000
+                // " "             -> ""
                 collapse_stack(number);
                 stack_.back() *= number;
                 // TODO: not checking here for semantic errors such as: 'two ninety'
             } else {
-                // Case 2b: a number bigger than the one at the top of the stack arrives,
-                //          and an and-connector separates this number from the previous one;
-                //          the new number is treated as a new expression
+                // Case 2b: the input number is bigger than the one at the top of the stack,
+                //          and an and-connector separates this input number from the previous one;
+                //          the input number is treated as a new expression
                 //
                 // "four"  -> "1 and "
                 // 1       -> 4
@@ -112,9 +113,9 @@ private:
             }
         } else if (top_number > number) {
             if (all_of_character_connector(last_connector_)) {
-                // Case 3a: a number smaller than the one at the top of the stack arrives,
-                //          and only whitespaces separate this number from the previous one;
-                //          the new number is pushed to the stack
+                // Case 3a: the input number is smaller than the one at the top of the stack,
+                //          and only whitespaces separate this input number from the previous one;
+                //          the input number is pushed to the stack
                 //
                 // "ninety" -> ""
                 // 100      -> 100, 90
@@ -122,20 +123,20 @@ private:
                 stack_.emplace_back(number);
             } else {
                 if (number_admits_and_connector(top_number)) {
-                    // Case 3b: a number smaller than the one at the top of the stack arrives,
-                    //          and an and-connector separates this number from the previous one,
+                    // Case 3b: the input number is smaller than the one at the top of the stack,
+                    //          an and-connector separates this input number from the previous one,
                     //          and the number at the top of the stack admits an and-connector as part of a word number expression;
-                    //          the new number is added to the one at the top of the stack
+                    //          the input number is added to the one at the top of the stack
                     //
                     // "four"  -> ""
                     // 100     -> 104
                     // " and " -> ""
                     stack_.back() += number;
                 } else {
-                    // Case 3b': a number smaller than the one at the top of the stack arrives,
-                    //           and an and-connector separates this number from the previous one;
+                    // Case 3b': the input number is smaller than the one at the top of the stack,
+                    //           an and-connector separates this input number from the previous one,
                     //           and the number at the top of the stack does not admit an and-connector as part of a word number expression;
-                    //           the new number is treated as a new expression
+                    //           the input number is treated as a new expression
                     //
                     // "four"  -> "8 and "
                     // 8       -> 4

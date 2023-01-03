@@ -58,7 +58,6 @@ The following build presets are available (the configuration presets have the sa
 
 All successful builds will generate:
 - `word_converter.exe`: the main binary, a console application that interacts with the user to execute the different problems from the book.
-- `word_converter-<MAJOR_VERSION>_<MINOR_VERSION>.lib`: a static library, used, for example, by the test and benchmark binaries.
 
 Builds with the option `-DWORD_CONVERTER_BUILD_TESTS=ON` (*debug* build presets) will also generate:
 - `word_converter_test.exe`: a console application to test the code.
@@ -67,7 +66,7 @@ Builds with the option `-DWORD_CONVERTER_BUILD_TESTS=ON` (*debug* build presets)
 
 From the command line:
 ```bash
-C:\projects\word_converter> .\out\build\windows-msvc-debug-tests\src\Debug\word_converter.exe res
+C:\projects\word_converter\out\build\windows-msvc-debug-tests\src\Debug> .\word_converter.exe -i <INPUT_FILE> [-o <OUTPUT_FILE>]
 ```
 
 ### Tests
@@ -78,9 +77,9 @@ C:\projects\word_converter> cmake --preset windows-msvc-debug-tests
 C:\projects\word_converter> cmake --build --preset windows-msvc-debug-tests
 ```
 
-You can run the test executable directly:
+You can run the test executable directly (notice **tests have to be run from the folder where the binary lives**, because they contain hardcoded paths to the resource folder):
 ```bash
-C:\projects\word_converter> .\out\build\windows-msvc-debug-tests\test\Debug\word_converter_test.exe
+C:\projects\word_converter\out\build\windows-msvc-debug-tests\test\Debug> .\word_converter_test.exe
 ```
 
 Or execute the tests via `ctest`:
@@ -90,7 +89,7 @@ C:\projects\word_converter\out\build\windows-msvc-debug-tests> ctest -C Debug --
 
 Alternatively, if you want a less verbose ouptut:
 ```bash
-C:\projects\word_converter> .\out\build\windows-msvc-debug-tests\test\Debug\word_converter_test.exe --gtest_brief=1
+C:\projects\word_converter\out\build\windows-msvc-debug-tests\test\Debug> .\word_converter_test.exe --gtest_brief=1
 ```
 
 Or:
@@ -161,15 +160,15 @@ From a `terminal`:
 The following build presets are available (the configuration presets have the same name):
 - Debug:
   - **unixlike-gcc-debug-tests**: *tests* enabled.
-  - **unixlike-gcc-debug-github**: *tests* and *code coverage* enabled. This is the Debug preset used in GitHub Actions.
+  - **unixlike-gcc-debug-github**: *tests*, *asan*, and *code coverage* enabled. This is the Debug preset used in GitHub Actions.
 - Release:
   - **unixlike-gcc-release-tests**: *tests* enabled.
 
 #### Output binaries
 
 All successful builds will generate:
+
 - `word_converter`: the main binary, a console application.
-- `the_modern_c++_challenge-<MAJOR_VERSION>_<MINOR_VERSION>.lib`: a static library, used, for example, by the test and test binary.
 
 Builds with the option `-DWORD_CONVERTER_BUILD_TESTS=ON` (*debug* build presets) will also generate:
 - `word_converter_test`: a console application to test the code.
@@ -178,7 +177,7 @@ Builds with the option `-DWORD_CONVERTER_BUILD_TESTS=ON` (*debug* build presets)
 
 From a `terminal`:
 ```bash
-~/projects/word_converter> ./out/build/unixlike-gcc-debug-tests/src/Debug/word_converter
+~/projects/word_converter/out/build/unixlike-gcc-debug-tests/src/Debug> ./word_converter -i <INPUT_FILE> [-o <OUTPUT_FILE>]
 ```
 
 ### Tests
@@ -189,9 +188,9 @@ Build with:
 ~/projects/word_converter> cmake --build --preset unixlike-gcc-debug-tests
 ```
 
-You can run the test executable directly:
+You can run the test executable directly (notice **tests have to be run from the folder where the binary lives**, because they contain hardcoded paths to the resource folder):
 ```bash
-~/projects/word_converter> ./out/build/unixlike-gcc-debug-tests/src/Debug/word_converter_test
+~/projects/word_converter/out/build/unixlike-gcc-debug-tests/test/Debug> ./word_converter_test
 ```
 
 Or execute the tests via `ctest`:
@@ -201,7 +200,7 @@ Or execute the tests via `ctest`:
 
 Alternatively, if you want a less verbose ouptut:
 ```bash
-~/projects/word_converter> ./out/build/unixlike-gcc-debug-tests/test/Debug/word_converter_test res --gtest_brief=1
+~/projects/word_converter/out/build/unixlike-gcc-debug-tests/test/Debug> ./word_converter_test --gtest_brief=1
 ```
 
 Or:
@@ -219,22 +218,133 @@ Or:
 - A `test` folder with the test files.
 - After a build, an `out/build` folder is also created.
 
-The implementation of each class is done at the header files. This leaves us with only one source file, `main.cpp`.
-The `test` folder contains a `main.cpp` and one source file for each header file in `include/word_converter`.
+The implementation of each class is done at the header files.<br/>
+This leaves us with only one source file, `main.cpp`.<br/>
+The `test` folder contains a `main.cpp` and one source file for each header file in `include/word_converter`.<br/>
+The `res` folder contains files used by the tests. The test binary hardcodes a relative path to this resource directory, and, for that reason, it has to be run from the folder where the binary lives (e.g. `out/build/unixlike-gcc-debug-tests/test/Debug`).
 
-There is a `CMakeLists.txt` file at the root of the project, and at the root of `src` and `test` folders.
+There is a `CMakeLists.txt` file at the root of the project, and at the root of the `src` and `test` folders.<br/>
 CMake presets are also used via a `CMakePresets.json` file.
 
 ### Architecture
 
+#### Main
+
 The `main` function logic is quite simple:
-- Parse the command line options.
-- Create an input reader.
-- Create a stream output writer (that will write to standard output), and, if requested by the user, a file output writer.
-- Call convert, passing the reader and the writers.
+- Parses the command line options.
+- Creates an input reader.
+- Creates a stream output writer (that will write to standard output), and, if requested by the user, a file output writer.
+- Creates a word to number converter, and, with it, a conversion manager.
+- Runs the conversion manager, passing it the reader and the writers.
 
-Exceptions thrown whether during the parsing of the command line options, or while creating the reader or the writers, are captured, and make the program terminate.
-
+Exceptions thrown whether during the parsing of the command line options, or while creating the reader or the writers, are captured, and make the program terminate.<br/>
 Both readers and writers are implemented as runtime polymorphic objects. A pure virtual base class, e.g. `input_reader` defines an interface, and concrete classes, e.g. `file_reader`, implement that interface.
-
 Using polymorphic readers is not mandatory for the task, but makes the implementation symmetric to that of the writers. Apart from the fact that opens the possibility to read the input directly as a string from the command line, which is useful for testing.
+
+#### Command line parser
+
+We only accept 3 or 5 arguments, the executable name always being the first of them.<br/>
+If the user enters 3 arguments, the second one has to be `-i`.<br/>
+If the user enters 5 arguments, the second and fourth have to be whether `-i` and `-o`, or `-o` and `-i`.<br/>
+If any of these conditions aren't met, a custom runtime error is thrown.<br/>
+No further checks are made at this point (e.g. the file passed as a parameter exists).<br/>
+Using a library such as `boost/program_options` may have simplified the parsing.
+
+#### Input reader
+
+Three classes are defined in this file: a pure virtual base class, `input reader`, and two concrete clases, `file_reader` and `stream_reader`.<br/>
+Each concrete class holds an input stream: `file_reader` reads from a file, and holds a file stream; while `stream_reader` reads from any input stream. They also implement a virtual method to retrieve a reference to that stream<br/>
+Upon construction, `file_reader` receives a file path, and checks the path corresponds to a regular file. Otherwise, it throws a custom runtime error.<br/>
+The base class has a three-method public API: `read`, `eof`, and `fail`. `read` reads a sentence, i.e. until a period is found, or until the end of file, if no period is found, and returns it. `eof` and `fail` let a client check the input stream's state.
+
+#### Output writer
+
+The implementation of the writers is quite similar to that of the readers.<br/>
+There are also three classes: a pure virtual base class, `output_writer`, and two concrete classes, `file_writer` and `stream_writer`.
+Again, each concrete class holds a stream, in this case an output stream.<br/>
+The `file_writer` constructor just checks the file stream is good. It doesn't check the file already exists.
+The base class just exposes one `write` method, which grabs the output stream and writes a text to it.
+
+#### Converter
+
+This is the place where the conversion is done.<br/>
+This file contains 4 classes: `conversion_manager`, `tokenizer`, `converter` and `word_to_number_converter`.<br/>
+Together with a `word_to_number_map`, a hash table mapping words to numbers (e.g. `hundred` to `100`).
+
+##### Conversion manager
+
+The `conversion_manager`:
+- reads an input text from an `input_reader`,
+- processes it using a `converter`, and
+- writes it out to a list of `output_writer`s.
+
+It basically contains a `run` function that:
+- Keeps reading sentences from an `input_reader` until the end of the file is reached.
+- Texts that do not form a sentence (i.e. that do not end in a period) are not converted. All the texts are written out though.
+- For every input sentence that needs to be processed, tokens are retrieved via a `tokenizer`, sent to the `converter` for parsing, and the result of this conversion  appended to an output sentence.
+- Once an input sentence has been processed, the output sentence is sent out to the different writers. 
+
+##### Converter
+
+Converters are also implemented as polymorphic objects, `converter` being their pure virtual base class.<br/>
+A converter has a single-method public API, `parse`, which takes an input text, processes it, and returns an output text.
+
+##### Word to number converter
+
+The `parse` implementation for the `word_to_number_converter` processes an input text sentence, where numbers can appear written as words, and returns an output text sentence, where numbers are written with digits. For example, it would translate `one hundred and one apples.` to `101 apples`. And it does so by receiving one token at a time.
+
+It follows the logic below: 
+- It makes use of a *stack of numbers*, and it also keeps track of the *last connector* between number tokens.
+- A connector could be anything other than a word number that could appear in a *word number expression* (e.g. a whitespace, a dash, or the word `and`).
+- Whenever a token is identified as a number (e.g. `ninety`, or `billion`), it pushes it to the stack.
+- If it were a connector between numbers, it updates the *last connector*.
+- Otherwise, it considers the token as a splitter, i.e. something that marks the end of the *word number expression*. In this case, it adds up all the numbers remaining in the *stack*, converts them to a string, appends the *last connector* and the received token, and return the resultant string. All these actions are done by the `pop_all_numbers` method.
+
+The `push_number` method has to deal with a few cases. For the descriptions below, let's consider the following information:
+```
+input word number          -> push number returned string
+stack before push          -> stack after push (top is at right)
+last connector before push -> last connector after push
+```
+
+- 1: the stack is empty; the number is just pushed to the top.
+- 2a: a number bigger than the one at the top of the stack arrives, and only whitespaces separate this number from the previous one; the stack is collapsed until a bigger number is found.
+
+Collapsing the stack means to keep adding pairs of numbers, starting from the top, while the accumulated sum is smaller than the new number to be pushed onto the stack. This is done by the `collapse_stack` method.
+```
+"thousand" -> ""
+600, 3     -> 603000
+" "        -> ""
+```
+
+- 2b: a number bigger than the one at the top of the stack arrives, and an *and-connector* separates this number from the previous one; the new number is treated as a new *expression*.
+```
+"four"  -> "1 and "
+1       -> 4
+" and " -> ""
+```
+
+- 3a: a number smaller than the one at the top of the stack arrives, and only whitespaces separate this number from the previous one; the new number is pushed to the stack.
+```
+"ninety" -> ""
+100      -> 100, 90
+" and "  -> ""
+```
+
+- 3b: a number smaller than the one at the top of the stack arrives, and an *and-connector* separates this number from the previous one, and the number at the top of the stack admits an *and-connector* as part of a *word number expression*; the new number is added to the one at the top of the stack.
+```
+"four"  -> ""
+100     -> 104
+" and " -> ""
+```
+
+- 3b': a number smaller than the one at the top of the stack arrives, and an *and-connector* separates this number from the previous one; and the number at the top of the stack does not admit an *and-connector* as part of a *word number expression*; the new number is treated as a new *expression*.
+```
+"four"  -> "8 and "
+8       -> 4
+" and " -> ""
+```
+
+Notice `push_number` can return a string when it finds the input word number starts a new *word number expression*.
+
+The implementation of the `push_number` method looks quite complex and, much probably, error-prone, with a lot of cases and if-else blocks. A much better solution would probably be a proper parser, but that should also require the definition of a grammar for the *word number expressions*.

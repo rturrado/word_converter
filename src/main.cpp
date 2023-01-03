@@ -33,7 +33,7 @@ int main_impl(std::ostream& os, int argc, const char** argv) {
         }
 
         // Read in text, convert it, and write it out
-        conversion_manager manager{std::make_unique<word_to_number_converter>() };
+        conversion_manager manager{ std::make_unique<word_to_number_converter>() };
         manager.run(std::move(input_reader), output_writers);
     } catch (const std::exception& ex) {
         os << "Error: " << ex.what() << "\n\n";

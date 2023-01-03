@@ -58,6 +58,11 @@ private:
             token == "and" or
             all_of_character_connector(token);
     }
+    static auto number_admits_and_connector(int n) {
+        // For instance: one hundred and one, two thousand and two, three million and three
+        // But not: ten and one, ninety and one, one hundred and two and three
+        return n >= 100 and n % 100 == 0;
+    }
     void collapse_stack(int new_number) {
         auto pos{std::ssize(stack_) - 1 };
         for (; pos > 0; --pos) {
@@ -72,6 +77,7 @@ private:
     }
     std::string push_number(const std::string& number_str) {
         auto number{word_to_number_map.at(number_str) };
+        // Case 1: the stack is empty
         if (stack_.empty()) {
             stack_.emplace_back(number);
             return {};
@@ -83,9 +89,9 @@ private:
         std::string ret{};
         if (top_number < number) {
             if (all_of_character_connector(last_connector_)) {
-                // Case: a number bigger than the one at the top of the queue arrives,
-                //       and only whitespaces separate this number from the previous one;
-                //       the queue is collapsed until a bigger number is found
+                // Case 2a: a number bigger than the one at the top of the stack arrives,
+                //          and only whitespaces separate this number from the previous one;
+                //          the stack is collapsed until a bigger number is found
                 //
                 // "thousand" -> ""
                 // 600, 3     -> 603000
@@ -94,42 +100,64 @@ private:
                 stack_.back() *= number;
                 // TODO: not checking here for semantic errors such as: 'two ninety'
             } else {
-                // Case: a number bigger than the one at the top of the queue arrives,
-                //       and a connector separates this number from the previous one;
-                //       the new number is treated as a new expression
+                // Case 2b: a number bigger than the one at the top of the stack arrives,
+                //          and an and-connector separates this number from the previous one;
+                //          the new number is treated as a new expression
                 //
                 // "four"  -> "1 and "
                 // 1       -> 4
                 // " and " -> ""
-                ret = std::to_string(top_number);
+                ret = std::to_string(top_number) + last_connector_;
                 stack_.back() = number;
             }
-        } else {
-            // top_number.number >= number
-            //
-            // Case: a number smaller than the one at the top of the queue arrives;
-            //       regardless of the connector separating this number from the previous one,
-            //       the new number is pushed to the queue
-            //
-            // "ninety" -> ""                 "ninety" -> ""
-            // 100      -> 100, 90     or     100      -> 100, 90
-            // " and "  -> ""                 ""       -> ""
-            stack_.emplace_back(number);
+        } else if (top_number > number) {
+            if (all_of_character_connector(last_connector_)) {
+                // Case 3a: a number smaller than the one at the top of the stack arrives,
+                //          and only whitespaces separate this number from the previous one;
+                //          the new number is pushed to the stack
+                //
+                // "ninety" -> ""
+                // 100      -> 100, 90
+                // " and "  -> ""
+                stack_.emplace_back(number);
+            } else {
+                if (number_admits_and_connector(top_number)) {
+                    // Case 3b: a number smaller than the one at the top of the stack arrives,
+                    //          and an and-connector separates this number from the previous one,
+                    //          and the number at the top of the stack admits an and-connector as part of a word number expression;
+                    //          the new number is added to the one at the top of the stack
+                    //
+                    // "four"  -> ""
+                    // 100     -> 104
+                    // " and " -> ""
+                    stack_.back() += number;
+                } else {
+                    // Case 3b': a number smaller than the one at the top of the stack arrives,
+                    //           and an and-connector separates this number from the previous one;
+                    //           and the number at the top of the stack does not admit an and-connector as part of a word number expression;
+                    //           the new number is treated as a new expression
+                    //
+                    // "four"  -> "8 and "
+                    // 8       -> 4
+                    // " and " -> ""
+                    ret = std::to_string(top_number) + last_connector_;
+                    stack_.back() = number;
+                }
+            }
+        } else {  // top_number == number
             // TODO: not checking here for semantic errors such as: 'hundred hundred'
-            // TODO: not checking here for a possible new expression such as: 'eight and five'
         }
         last_connector_.clear();
         return ret;
     }
-    [[nodiscard]] std::string pop_all_numbers() {
-        // Return last connector
-        if (stack_.empty()) {
-            return last_connector_;
+    [[nodiscard]] std::string pop_all_numbers(const std::string& token) {
+        std::string ret{};
+        if (not stack_.empty()) {
+            auto sum_of_all_tokens{ std::accumulate(stack_.begin(), stack_.end(), 0) };
+            ret = std::to_string(sum_of_all_tokens);
+            stack_.clear();
         }
-        // Or the sum of all numbers in the queue plus the last connector
-        auto sum_of_all_tokens{ std::accumulate(stack_.begin(), stack_.end(), 0) };
-        auto ret{ std::to_string(sum_of_all_tokens) + last_connector_ };
-        stack_.clear();
+        ret = ret + last_connector_ + token;
         last_connector_.clear();
         return ret;
     }
@@ -149,7 +177,7 @@ public:
             }
         }
         // Other, word number splitter
-        return pop_all_numbers() + token;
+        return pop_all_numbers(token);
     }
 };
 

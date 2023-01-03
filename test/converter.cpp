@@ -325,3 +325,39 @@ TEST(parse, one_hundred_comma_and_one) {
     }
     EXPECT_EQ(output_text, "100, and 1.");
 }
+TEST(parse, eight_and_five) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "eight and five." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "8 and 5.");
+}
+TEST(parse, one_hundred_and_eight_and_five) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one hundred and eight and five." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "108 and 5.");
+}
+TEST(parse, one_and_four) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one and four." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "1 and 4.");
+}
+TEST(parse, one_hundred_and_one_and_four) {
+    word_to_number_converter c{};
+    tokenizer tokenizer{ "one hundred and one and four." };
+    std::string output_text{};
+    for (const auto& token : tokenizer.get_next_token()) {
+        output_text += c.parse(token);
+    }
+    EXPECT_EQ(output_text, "101 and 4.");
+}

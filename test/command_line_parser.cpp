@@ -3,8 +3,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using namespace wc::clp;
-
 
 TEST(parse, argc_equals_1) {
     int argc{ 1 };

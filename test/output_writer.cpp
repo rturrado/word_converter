@@ -2,7 +2,6 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <memory>  // make_unique
 
 
 TEST(file_writer_constructor, could_not_create_file) {

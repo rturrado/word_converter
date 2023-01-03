@@ -1,6 +1,5 @@
 #include "converter.h"
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <iterator>  // istreambuf_iterator
 #include <memory>

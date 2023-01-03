@@ -38,16 +38,16 @@ using converter_up = std::unique_ptr<converter>;
 
 
 class word_to_number_converter : public converter {
-    using token_queue = std::vector<int>;
+    using number_stack = std::vector<int>;
 private:
-    token_queue queue_{};
+    number_stack stack_{};
     std::string last_connector_{};
 
     static auto is_word_number(const std::string& token) {
         return word_to_number_map.contains(token);
     }
-    static auto all_of_character_connector(const std::string& token) {
-        return std::ranges::all_of(token, [](unsigned char c) {
+    static auto all_of_character_connector(const std::string& connector) {
+        return std::ranges::all_of(connector, [](unsigned char c) {
             return
                 c == '-' or
                 std::isspace(c);
@@ -58,68 +58,78 @@ private:
             token == "and" or
             all_of_character_connector(token);
     }
-    void collapse_top_tokens(int new_token) {
-        auto pos{ std::ssize(queue_) - 1 };
-        for (auto prev{ pos - 1 }; pos > 0 and prev >= 0; --pos, --prev) {
-            auto sum_of_last_two{ queue_[prev] + queue_[pos] };
-            if (sum_of_last_two < new_token) {
-                queue_[prev] = sum_of_last_two;
+    void collapse_stack(int new_number) {
+        auto pos{std::ssize(stack_) - 1 };
+        for (; pos > 0; --pos) {
+            auto sum_of_last_two{stack_[pos - 1] + stack_[pos] };
+            if (sum_of_last_two < new_number) {
+                stack_[pos - 1] = sum_of_last_two;
             } else {
                 break;
             }
         }
-        queue_.resize(pos + 1);
+        stack_.resize(pos + 1);
     }
-    std::string push_token(const std::string& token_str) {
-        auto token{ word_to_number_map.at(token_str) };
-        if (queue_.empty()) {
-            queue_.emplace_back(token);
+    std::string push_number(const std::string& number_str) {
+        auto number{word_to_number_map.at(number_str) };
+        if (stack_.empty()) {
+            stack_.emplace_back(number);
             return {};
         }
-        // token_str                  -> ret
-        // queue before push          -> queue after push
+        // number_str                 -> ret
+        // stack before push          -> stack after push
         // last connector before push -> last connector after push
-        auto& top_token{ queue_.back() };
-        if (top_token < token) {
+        auto& top_number{stack_.back() };
+        std::string ret{};
+        if (top_number < number) {
             if (all_of_character_connector(last_connector_)) {
+                // Case: a number bigger than the one at the top of the queue arrives,
+                //       and only whitespaces separate this number from the previous one;
+                //       the queue is collapsed until a bigger number is found
+                //
                 // "thousand" -> ""
-                // 3, 600     -> 603000
+                // 600, 3     -> 603000
                 // " "        -> ""
-                collapse_top_tokens(token);
-                queue_.back() *= token;
-                last_connector_.clear();
-                return {};
+                collapse_stack(number);
+                stack_.back() *= number;
                 // TODO: not checking here for semantic errors such as: 'two ninety'
+            } else {
+                // Case: a number bigger than the one at the top of the queue arrives,
+                //       and a connector separates this number from the previous one;
+                //       the new number is treated as a new expression
+                //
+                // "four"  -> "1 and "
+                // 1       -> 4
+                // " and " -> ""
+                ret = std::to_string(top_number);
+                stack_.back() = number;
             }
-            // "hundred" -> "1 and "
-            // 1         -> 100
-            // " and "   -> ""
-            auto ret{ std::to_string(top_token) };
-            queue_.back() = token;
-            last_connector_.clear();
-            return ret;
+        } else {
+            // top_number.number >= number
+            //
+            // Case: a number smaller than the one at the top of the queue arrives;
+            //       regardless of the connector separating this number from the previous one,
+            //       the new number is pushed to the queue
+            //
+            // "ninety" -> ""                 "ninety" -> ""
+            // 100      -> 100, 90     or     100      -> 100, 90
+            // " and "  -> ""                 ""       -> ""
+            stack_.emplace_back(number);
+            // TODO: not checking here for semantic errors such as: 'hundred hundred'
+            // TODO: not checking here for a possible new expression such as: 'eight and five'
         }
-        // top_token.number >= token
-        //
-        // "ninety" -> ""
-        // 100      -> 100, 90
-        // " and "  -> ""
-        //
-        // "ninety" -> ""
-        // 100      -> 100, 90
-        // ""       -> ""
-        queue_.emplace_back(token);
         last_connector_.clear();
-        return {};
-        // TODO: not checking here for semantic errors such as: 'hundred hundred'
+        return ret;
     }
-    [[nodiscard]] std::string pop_all_tokens() {
-        if (queue_.empty()) {
+    [[nodiscard]] std::string pop_all_numbers() {
+        // Return last connector
+        if (stack_.empty()) {
             return last_connector_;
         }
-        auto sum_of_all_tokens{ std::accumulate(queue_.begin(), queue_.end(), 0) };
+        // Or the sum of all numbers in the queue plus the last connector
+        auto sum_of_all_tokens{ std::accumulate(stack_.begin(), stack_.end(), 0) };
         auto ret{ std::to_string(sum_of_all_tokens) + last_connector_ };
-        queue_.clear();
+        stack_.clear();
         last_connector_.clear();
         return ret;
     }
@@ -127,18 +137,19 @@ public:
     [[nodiscard]] std::string parse(const std::string& token) override {
         // Number
         if (is_word_number(token)) {
-            return push_token(token);
+            return push_number(token);
         }
         // Space or "and"
         if (is_allowed_connector(token)) {
-            if (queue_.empty()) {
+            if (stack_.empty()) {
                 return token;
+            } else {
+                last_connector_ += token;
+                return {};
             }
-            last_connector_ += token;
-            return {};
         }
         // Other, word number splitter
-        return pop_all_tokens() + token;
+        return pop_all_numbers() + token;
     }
 };
 

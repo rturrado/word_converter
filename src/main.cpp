@@ -5,10 +5,6 @@
 
 #include <exception>
 #include <iostream>  // cout
-#include <memory>  // unique_ptr
-#include <vector>
-
-using namespace wc::clp;
 
 
 void print_usage(std::ostream& os) {

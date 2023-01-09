@@ -1,5 +1,5 @@
 #include "command_line_parser.h"
-#include "converter.h"
+#include "conversion_manager.h"
 #include "input_reader.h"
 #include "output_writer.h"
 
@@ -33,8 +33,7 @@ int main_impl(std::ostream& os, int argc, const char** argv) {
         }
 
         // Read in text, convert it, and write it out
-        conversion_manager manager{ std::make_unique<word_to_number_converter>() };
-        manager.run(std::move(input_reader), output_writers);
+        conversion_manager::run(std::move(input_reader), output_writers);
     } catch (const std::exception& ex) {
         os << "Error: " << ex.what() << "\n\n";
         print_usage(os);

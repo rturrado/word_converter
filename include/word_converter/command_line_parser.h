@@ -1,6 +1,7 @@
 # pragma once
 
 #include <cstring>
+#include <fmt/format.h>
 #include <optional>
 #include <stdexcept>  // runtime_error
 #include <string>  // to_string
@@ -17,8 +18,8 @@ private:
 
 
 struct invalid_argument_error : public std::runtime_error {
-    explicit invalid_argument_error(std::string arg) : std::runtime_error{ "" } {
-        message_ = message_ + "'" + std::move(arg) + "'";
+    explicit invalid_argument_error(const std::string& arg) : std::runtime_error{ "" } {
+        message_ += fmt::format("'{}'", arg);
     }
     [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); };
 private:

@@ -239,7 +239,6 @@ The `main` function logic is quite simple:
 - Parses the command line options.
 - Creates an input reader.
 - Creates a stream output writer (that will write to standard output), and, if requested by the user, a file output writer.
-- Creates a word to number converter, and, with it, a conversion manager.
 - Runs the conversion manager, passing it the reader and the writers.
 
 Exceptions thrown whether during the parsing of the command line options, or while creating the reader or the writers, are captured,
@@ -277,112 +276,19 @@ Again, each concrete class holds a stream, in this case an output stream.<br/>
 The `file_writer` constructor just checks that the file stream is good. It doesn't check the file already exists.
 The base class just exposes one `write` method, which grabs the output stream and writes a text to it.
 
-#### Converter
-
-This is the place where the conversion is done.<br/>
-This file contains 4 classes: `conversion_manager`, `tokenizer`, `converter` and `word_to_number_converter`.<br/>
-Together with a `word_to_number_map`, a hash table mapping words to numbers (e.g. `hundred` to `100`).
-
 ##### Conversion manager
 
 The `conversion_manager`:
 - reads an input text from an `input_reader`,
-- processes it using a `converter`, and
+- processes it using a `parser`, and
 - writes it out to a list of `output_writer`s.
 
-It basically contains a `run` function that:
+It basically contains a static `run` function that:
 - Keeps reading sentences from an `input_reader` until the end of the file is reached.
 - Texts that do not form a sentence (i.e. that do not end in a period) are not converted. All the texts are written out though.
-- For every input sentence that needs to be processed, tokens are retrieved via a `tokenizer`, sent to the `converter` for parsing,
-- and the result of this conversion  appended to an output sentence.
+- Every input sentence that needs to be processed is sent to the `parser`, and the result of this parsing appended to an output sentence.
 - Once an input sentence has been processed, the output sentence is sent out to the different writers. 
 
-##### Tokenizer
+##### Lexer
 
-A `tokenizer` is constructed passing a text to be processed, and then called through `get_next_token`.<br/>
-This method is implemented as a coroutine. It repeatedly regex-searches for a word, and yields the suffix of the search,
-in case it is not empty, and the matched text.<br/>
-When no more matches are found, it yields the remaining text and returns.
-
-##### Converter
-
-Converters are also implemented as polymorphic objects, `converter` being their pure virtual base class.<br/>
-A converter has a single-method public API, `parse`, which takes an input text, processes it, and returns an output text.
-
-##### Word to number converter
-
-The `parse` implementation for the `word_to_number_converter` processes an input text sentence, where numbers can appear written as words,
-and returns an output text sentence, where numbers are written with digits.
-For example, it would translate `one hundred and one apples.` to `101 apples`. And it does so by receiving one token at a time.
-
-It makes use of a *stack of numbers*, and it also keeps track of the *last connector* between number tokens.
-
-A connector could be anything other than a word number that could appear in a *word number expression*
-(e.g. a whitespace, a dash, or the word `and`).
-
-It follows the logic below: 
-- Whenever a token is identified as a number (e.g. `ninety`, or `billion`), it pushes it to the stack.
-- If it were a connector between numbers, it updates the *last connector*.
-- Otherwise, it considers the token as a splitter, i.e. something that marks the end of the *word number expression*.
-In this case, it adds up all the numbers remaining in the *stack*, converts them to a string,
-appends the *last connector* and the received token, and returns the resultant string.
-All these actions are done by the `pop_all_numbers` method.
-
-The `push_number` method has to deal with a few cases. For the descriptions below, let's consider the following information:
-```
-input word number          -> returned string
-stack before push          -> stack after push (top is at right)
-last connector before push -> last connector after push
-```
-
-- 1: the stack is empty; the input number is just pushed to the top.
-- 2a: the input number is bigger than the one at the top of the stack, and only whitespaces separate this input number from the previous one;
-the stack is collapsed, and the new top number is multiplied by the input number.
-
-Collapsing the stack means to keep adding pairs of numbers, starting from the top,
-while the accumulated sum is smaller than the input number to be pushed onto the stack.
-This is done by the `collapse_stack` method.
-```
-"thousand"      -> ""
-3000000, 600, 3 -> 3000000, 603000
-" "             -> ""
-```
-
-- 2b: the input number is bigger than the one at the top of the stack, and an *and-connector* separates this input number from the previous one;
-the input number is treated as a new *expression*.
-```
-"four"  -> "1 and "
-1       -> 4
-" and " -> ""
-```
-
-- 3a: the input number is smaller than the one at the top of the stack, and only whitespaces separate this input number from the previous one;
-the input number is pushed to the stack.
-```
-"ninety" -> ""
-100      -> 100, 90
-" and "  -> ""
-```
-
-- 3b: the input number is smaller than the one at the top of the stack, an *and-connector* separates this input number from the previous one,
-and the number at the top of the stack admits an *and-connector* as part of a *word number expression*;
-the input number is added to the one at the top of the stack.
-```
-"four"  -> ""
-100     -> 104
-" and " -> ""
-```
-
-- 3b': the input number is smaller than the one at the top of the stack, an *and-connector* separates this input number from the previous one,
-and the number at the top of the stack does not admit an *and-connector* as part of a *word number expression*;
-the input number is treated as a new *expression*.
-```
-"four"  -> "8 and "
-8       -> 4
-" and " -> ""
-```
-
-Notice `push_number` can return a string when it finds the input number starts a new *word number expression*.
-
-The implementation of the `push_number` method looks quite complex, with a lot of cases and `if-else` blocks.
-A much better solution would probably be a proper parser, but that should also require the definition of a grammar for the *word number expressions*.
+##### Parser

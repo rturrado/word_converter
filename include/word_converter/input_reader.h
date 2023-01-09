@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <fmt/format.h>
 #include <fstream>
 #include <stdexcept>  // runtime_error
 #include <system_error>  // error_code
@@ -10,7 +11,7 @@ namespace fs = std::filesystem;
 
 struct file_is_not_a_regular_file_error : public std::runtime_error {
     explicit file_is_not_a_regular_file_error(const fs::path& file_path) : std::runtime_error{ "" } {
-        message_ = message_ + "'" + file_path.generic_string() + "'";
+        message_ += fmt::format("'{}'", file_path.generic_string());
     }
     [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); };
 private:

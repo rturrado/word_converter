@@ -2,79 +2,13 @@
 
 #include "generator.hpp"
 
-#include <algorithm>  // for_each
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <regex>
 #include <rtc/string.h>
 #include <ostream>
 #include <unordered_map>
-#include <unordered_set>
 #include <string>
-
-
-// Grammar
-//
-// start ::= sentence
-
-// sentence ::= sentence_prefix sentence_body
-// sentence_prefix ::= text_without_number_expressions
-// sentence_body ::= number_expression rest_of_sentence_body
-// rest_of_sentence_body ::= text_without_number_expression sentence_body
-//     | period
-
-// text_without_number_expressions ::= text_without_number_expression text_without_number_expressions
-//    | nothing
-// text_without_number_expression := other
-
-// number_expression ::= billions | ten_to_ninety_nine | zero
-//
-// billions ::= hundreds rest_of_billions
-// rest_of_billions ::= billion below_one_billion
-//     | nothing
-// billion ::= "billion"
-// below_one_billion ::= millions
-//    | and one_to_ninety_nine
-//    | nothing
-//
-// millions ::= hundreds rest_of_millions
-// rest_of_millions ::= million below_one_million
-//     | nothing
-// million ::= "million"
-// below_one_million ::= thousands
-//    | and one_to_ninety_nine
-//    | nothing
-//
-// thousands ::= hundreds rest_of_thousands
-// rest_of_thousands ::= thousand below_one_thousand
-//     | nothing
-// thousand ::= "thousand"
-// below_one_thousand ::= digit hundred and one_to_ninety_nine
-//     | and one_to_ninety_nine
-//     | nothing
-//
-// hundreds ::= one_to_nine rest_of_hundreds
-// rest_of_hundreds ::= hundred below_one_hundred
-//     | nothing
-// hundred ::= "hundred"
-// below_one_hundred ::= and one_to_ninety_nine
-//     | nothing
-//
-// one_to_ninety_nine ::= one_to_nine | ten_to_ninety_nine
-// ten_to_ninety_nine ::= ten_to_nineteen | tens rest_of_tens
-// rest_of_tens ::= dash one_to_nine
-//     | one_to_nine
-//     | nothing
-// tens ::= "twenty" | "thirty" | "forty" | "fifty" | "sixty" | "seventy" | "eighty" | "ninety"
-// ten_to_nineteen ::= "ten" | "eleven" | "twelve" | "thirteen" | "fourteen" | "fifteen" | "sixteen" | "seventeen" | "eighteen" | "nineteen"
-// one_to_nine ::= one | two_to_nine
-// two_to_nine ::= "two" | "three" | "four" | "five" | "six" | "seven" | "eight" | "nine"
-// one ::= "one"
-// zero ::= "zero"
-//
-// dash ::= '-'
-// period ::= '.'
-// other
 
 
 enum class lexeme_t {
@@ -121,10 +55,6 @@ struct fmt::formatter<lexeme_t> : fmt::ostream_formatter {};
 struct token_t {
     lexeme_t lexeme{};
     std::string text{};
-    token_t(lexeme_t l, std::string t) : lexeme{ l }, text{ std::move(t) } {}
-    token_t(token_t& other) = default;
-    token_t(token_t&&) = delete;
-    ~token_t() = default;
 };
 inline std::ostream& operator<<(std::ostream& os, const token_t& t) {
     auto escape_escape_sequences = [](std::string str) {
@@ -183,13 +113,21 @@ inline static const std::unordered_map<std::string, lexeme_t> word_to_lexeme_map
 };
 
 
-class lexer {
+class tokenizer {
     std::string text_{};
+    long source_location_{};
 public:
-    explicit lexer(std::string text)
+    explicit tokenizer(std::string text)
         : text_{ std::move(text) }
     {}
-    std::generator<token_t> get_next_token() {
+    [[nodiscard]] auto get_source_text() const {
+        return text_;
+    }
+    [[nodiscard]] auto get_source_location() const {
+        return source_location_;
+    }
+    [[nodiscard]] std::generator<token_t> operator()() {
+        std::string text{ text_ };
         std::string space_pattern{ R"([ \t\r\n]+)" };
         std::string dash_pattern{ R"(\-)" };
         std::string period_pattern{ R"(\.)" };
@@ -201,31 +139,88 @@ public:
             word_pattern  // 4
         )};
         std::smatch sm{};
-        while (std::regex_search(text_, sm, pattern)) {
+        while (std::regex_search(text, sm, pattern)) {
             const auto& prefix{ sm.prefix().str() };
             if (not prefix.empty()) {  // other
-                co_yield token_t{lexeme_t::other, prefix };
+                token_t ret{ lexeme_t::other, prefix };
+                co_yield ret;
             }
             if (sm[1].matched) {  // space
-                co_yield token_t{ lexeme_t::space, sm[1].str() };
+                source_location_ += sm.position(1);
+                token_t ret{ lexeme_t::space, sm[1].str() };
+                co_yield ret;
+                source_location_ += sm.length(1);
             } else if (sm[2].matched) {  // dash
-                co_yield token_t{ lexeme_t::dash, sm[2].str() };
+                source_location_ += sm.position(2);
+                token_t ret{ lexeme_t::dash, sm[2].str() };
+                co_yield ret;
+                source_location_ += sm.length(2);
             } else if (sm[3].matched) {  // period
-                co_yield token_t{ lexeme_t::period, sm[3].str() };
+                source_location_ += sm.position(3);
+                token_t ret{ lexeme_t::period, sm[3].str() };
+                co_yield ret;
+                source_location_ += sm.length(3);
             } else if (sm[4].matched) {  // word
+                source_location_ += sm.position(4);
                 const auto &word{ sm[4].str() };
                 auto word_lc{ rtc::string::to_lowercase(word) };
                 if (word_to_lexeme_map.contains(word_lc)) {
-                    co_yield token_t{ word_to_lexeme_map.at(word_lc), word };
+                    token_t ret{ word_to_lexeme_map.at(word_lc), word };
+                    co_yield ret;
                 } else {
-                    co_yield token_t{ lexeme_t::other, word };
+                    token_t ret{ lexeme_t::other, word };
+                    co_yield ret;
                 }
+                source_location_ += sm.length(4);
             }
-            text_ = sm.suffix();
+            text = sm.suffix();
         }
-        if (not text_.empty()) {  // other
-            co_yield token_t{ lexeme_t::other, text_ };
+        if (not text.empty()) {  // other
+            token_t ret{ lexeme_t::other, text };
+            co_yield ret;
+            source_location_ += std::ssize(text);
         }
-        co_yield token_t{ lexeme_t::end, {} };
+        token_t ret{ lexeme_t::end, {} };
+        co_yield ret;
+    }
+};
+
+
+class lexer {
+    using generator_t = std::generator<token_t>;
+    using generator_iter_t = decltype(std::declval<generator_t>().begin());
+    using generator_sentinel_t =decltype(std::declval<generator_t>().end());
+private:
+    std::string text_{};
+    tokenizer tokenizer_;
+    generator_t token_generator_;
+    generator_iter_t current_token_it_;
+    generator_sentinel_t end_token_it_;
+    token_t current_token_;
+public:
+    explicit lexer(std::string text)
+        : tokenizer_{ std::move(text) }
+        , token_generator_{ tokenizer_() }
+        , current_token_it_{ token_generator_.begin() }
+        , end_token_it_{ token_generator_.end() }
+        , current_token_{ *current_token_it_ }
+    {}
+
+    void advance_to_next_token() {
+        if (++current_token_it_ != end_token_it_) {
+            current_token_ = *current_token_it_;
+        }
+    }
+    [[nodiscard]] auto get_current_token() const {
+        return current_token_;
+    }
+    [[nodiscard]] auto get_current_lexeme() const {
+        return current_token_.lexeme;
+    }
+    [[nodiscard]] auto get_source_text() const {
+        return tokenizer_.get_source_text();
+    }
+    [[nodiscard]] auto get_source_location() const {
+        return tokenizer_.get_source_location();
     }
 };

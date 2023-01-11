@@ -1,109 +1,324 @@
 #include "parser.h"
 
+#include <fmt/format.h>
 #include <gtest/gtest.h>
+#include <memory>  // make_unique
 
 
 // 'parse' will only receive sentences, i.e. texts ending in a period
 
-TEST(parser_parse, empty_sentence) { EXPECT_EQ(parser::parse("."), "."); }
-TEST(parser_parse, two_empty_sentences) { EXPECT_EQ(parser::parse(".."), ".."); }
-TEST(parser_parse, empty_sentence_and_text) { EXPECT_EQ(parser::parse(". foo."), ". foo."); }
-TEST(parser_parse, empty_sentence_and_number) { EXPECT_EQ(parser::parse(". one."), ". 1."); }
-TEST(parser_parse, text_and_empty_sentence) { EXPECT_EQ(parser::parse("foo.."), "foo.."); }
-TEST(parser_parse, number_and_empty_sentence) { EXPECT_EQ(parser::parse("one.."), "1.."); }
-
-TEST(parser_parse, number) { EXPECT_EQ(parser::parse("one."), "1."); }
-TEST(parser_parse, text_number) { EXPECT_EQ(parser::parse("foo one."), "foo 1."); }
-TEST(parser_parse, number_text) { EXPECT_EQ(parser::parse("one foo."), "1 foo."); }
-TEST(parser_parse, text_number_text) { EXPECT_EQ(parser::parse("foo one meh."), "foo 1 meh."); }
-TEST(parser_parse, text_number_text_number) { EXPECT_EQ(parser::parse("foo one meh two."), "foo 1 meh 2."); }
-TEST(parser_parse, text_number_text_number_text) { EXPECT_EQ(parser::parse("foo one meh two blah."), "foo 1 meh 2 blah."); }
-
-TEST(parser_parse, number_number) { EXPECT_EQ(parser::parse("."), ""); }
- 
-TEST(parser_parse, zero) { EXPECT_EQ(parser::parse("zero."), "0."); }
-TEST(parser_parse, one) { EXPECT_EQ(parser::parse("one."), "1."); }
-TEST(parser_parse, nine) { EXPECT_EQ(parser::parse("nine."), "9."); }
-TEST(parser_parse, ten) { EXPECT_EQ(parser::parse("ten."), "."); }
-TEST(parser_parse, nineteen) { EXPECT_EQ(parser::parse("nineteen."), "."); }
-TEST(parser_parse, twenty) { EXPECT_EQ(parser::parse("twenty."), "10."); }
-TEST(parser_parse, twenty_one) { EXPECT_EQ(parser::parse("twenty one."), "21."); }
-TEST(parser_parse, twenty_dash_one) { EXPECT_EQ(parser::parse("twenty-one."), "21."); }
-TEST(parser_parse, twenty_nine) { EXPECT_EQ(parser::parse("twenty nine."), "29."); }
-TEST(parser_parse, twenty_dash_nine) { EXPECT_EQ(parser::parse("twenty-nine."), "29."); }
-TEST(parser_parse, ninety) { EXPECT_EQ(parser::parse("ninety."), "90."); }
-TEST(parser_parse, ninety_one) { EXPECT_EQ(parser::parse("ninety one."), "91."); }
-TEST(parser_parse, ninety_dash_one) { EXPECT_EQ(parser::parse("ninety-one."), "91."); }
-TEST(parser_parse, ninety_nine) { EXPECT_EQ(parser::parse("ninety nine."), "99."); }
-TEST(parser_parse, ninety_dash_nine) { EXPECT_EQ(parser::parse("ninety-nine."), "99."); }
-TEST(parser_parse, one_hundred) { EXPECT_EQ(parser::parse("one hundred."), "100."); }
-TEST(parser_parse, one_hundred_and_one) { EXPECT_EQ(parser::parse("one hundred and one."), "101."); }
-TEST(parser_parse, one_hundred_and_ninety) { EXPECT_EQ(parser::parse("one hundred and ninety."), "190."); }
-TEST(parser_parse, one_hundred_and_ninety_nine) { EXPECT_EQ(parser::parse("one hundred and ninety nine."), "199."); }
-TEST(parser_parse, one_hundred_and_ninety_dash_nine) { EXPECT_EQ(parser::parse("one hundred and ninety dash nine."), "199."); }
-TEST(parser_parse, nine_hundred) { EXPECT_EQ(parser::parse("nine hundred."), "900."); }
-TEST(parser_parse, nine_hundred_and_one) { EXPECT_EQ(parser::parse("nine hundred and one."), "901."); }
-TEST(parser_parse, nine_hundred_and_ninety) { EXPECT_EQ(parser::parse("nine hundred and ninety."), "990."); }
-TEST(parser_parse, nine_hundred_and_ninety_nine) { EXPECT_EQ(parser::parse("nine hundred and ninety nine."), "999."); }
-TEST(parser_parse, nine_hundred_and_ninety_dash_nine) { EXPECT_EQ(parser::parse("nine hundred and ninety dash nine."), "999."); }
-TEST(parser_parse, one_thousand) { EXPECT_EQ(parser::parse("one thousand."), "1000."); }
-TEST(parser_parse, nine_thousand) { EXPECT_EQ(parser::parse("nine thousand."), "9000."); }
-TEST(parser_parse, nine_hundred_thousand) { EXPECT_EQ(parser::parse("nine hundred thousand."), "900000."); }
-TEST(parser_parse, nine_hundred_and_ninety_nine_thousand) { EXPECT_EQ(parser::parse("nine hundred and ninety nine thousand."), "999000."); }
-TEST(parser_parse, nine_hundred_and_ninety_dash_nine_thousand) {
-    EXPECT_EQ(parser::parse("nine hundred and ninety dash nine thousand."), "999000.");
+TEST(parser_parse, empty_sentence) {
+    std::string text{ "." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), ".");
 }
-TEST(parser_parse, one_million) { EXPECT_EQ(parser::parse("one million."), "1000000."); }
-TEST(parser_parse, nine_million) { EXPECT_EQ(parser::parse("nine million."), "9000000."); }
-TEST(parser_parse, nine_hundred_million) { EXPECT_EQ(parser::parse("nine hundred million."), "900000000."); }
+TEST(parser_parse, two_empty_sentences) {
+    std::string text{ ".." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "..");
+}
+TEST(parser_parse, empty_sentence_and_text) {
+    std::string text{ ". foo." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), ". foo.");
+}
+TEST(parser_parse, empty_sentence_and_number) {
+    std::string text{ ". one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), ". 1");
+}
+TEST(parser_parse, text_and_empty_sentence) {
+    std::string text{ "foo.." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "foo..");
+}
+TEST(parser_parse, number_and_empty_sentence) {
+    std::string text{ "one.." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "1..");
+}
+
+TEST(parser_parse, number) {
+    std::string text{ "one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "1.");
+}
+TEST(parser_parse, text_number) {
+    std::string text{ "foo one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "foo 1.");
+}
+TEST(parser_parse, number_text) {
+    std::string text{ "one foo." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "1 foo.");
+}
+TEST(parser_parse, text_number_text) {
+    std::string text{ "foo one meh." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "foo 1 meh.");
+}
+TEST(parser_parse, text_number_text_number) {
+    std::string text{ "foo one meh two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "foo 1 meh 2.");
+}
+TEST(parser_parse, text_number_text_number_text) {
+    std::string text{ "foo one meh two blah." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "foo 1 meh 2 blah.");
+}
+
+TEST(parser_parse, number_number) {
+    std::string text{ "." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "");
+}
+ 
+TEST(parser_parse, zero) {
+    std::string text{ "zero." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "0.");
+}
+TEST(parser_parse, one) {
+    std::string text{ "one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "1.");
+}
+TEST(parser_parse, nine) {
+    std::string text{ "nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "9.");
+}
+TEST(parser_parse, ten) {
+    std::string text{ "ten." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "10.");
+}
+TEST(parser_parse, nineteen) {
+    std::string text{ "nineteen." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "19.");
+}
+TEST(parser_parse, twenty) {
+    std::string text{ "twenty." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "20.");
+}
+TEST(parser_parse, twenty_one) {
+    std::string text{ "twenty one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "21.");
+}
+TEST(parser_parse, twenty_dash_one) {
+    std::string text{ "twenty-one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "21.");
+}
+TEST(parser_parse, twenty_nine) {
+    std::string text{ "twenty nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "29.");
+}
+TEST(parser_parse, twenty_dash_nine) {
+    std::string text{ "twenty-nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "29.");
+}
+TEST(parser_parse, ninety) {
+    std::string text{ "ninety." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "90.");
+}
+TEST(parser_parse, ninety_one) {
+    std::string text{ "ninety one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "91.");
+}
+TEST(parser_parse, ninety_dash_one) {
+    std::string text{ "ninety-one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "91.");
+}
+TEST(parser_parse, ninety_nine) {
+    std::string text{ "ninety nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "99.");
+}
+TEST(parser_parse, ninety_dash_nine) {
+    std::string text{ "ninety-nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "99.");
+}
+TEST(parser_parse, one_hundred) {
+    std::string text{ "one hundred." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "100.");
+}
+TEST(parser_parse, one_hundred_and_one) {
+    std::string text{ "one hundred and one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "101.");
+}
+TEST(parser_parse, one_hundred_and_ninety) {
+    std::string text{ "one hundred and ninety." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "190.");
+}
+TEST(parser_parse, one_hundred_and_ninety_nine) {
+    std::string text{ "one hundred and ninety nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "199.");
+}
+TEST(parser_parse, one_hundred_and_ninety_dash_nine) {
+    std::string text{ "one hundred and ninety-nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "199.");
+}
+TEST(parser_parse, nine_hundred) {
+    std::string text{ "nine hundred." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "900.");
+}
+TEST(parser_parse, nine_hundred_and_one) {
+    std::string text{ "nine hundred and one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "901.");
+}
+TEST(parser_parse, nine_hundred_and_ninety) {
+    std::string text{ "nine hundred and ninety." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "990.");
+}
+TEST(parser_parse, nine_hundred_and_ninety_nine) {
+    std::string text{ "nine hundred and ninety nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "999.");
+}
+TEST(parser_parse, nine_hundred_and_ninety_dash_nine) {
+    std::string text{ "nine hundred and ninety dash nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "999.");
+}
+TEST(parser_parse, one_thousand) {
+    std::string text{ "one thousand." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000));
+}
+TEST(parser_parse, nine_thousand) {
+    std::string text{ "nine thousand." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 9'000));
+}
+TEST(parser_parse, nine_hundred_thousand) {
+    std::string text{ "nine hundred thousand." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 900'000));
+}
+TEST(parser_parse, nine_hundred_and_ninety_nine_thousand) {
+    std::string text{ "nine hundred and ninety nine thousand." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 999'000));
+}
+TEST(parser_parse, nine_hundred_and_ninety_dash_nine_thousand) {
+    std::string text{ "nine hundred and ninety-nine thousand." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 999'000));
+}
+TEST(parser_parse, one_million) {
+    std::string text{ "one million." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000'000));
+}
+TEST(parser_parse, nine_million) {
+    std::string text{ "nine million." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 9'000'000));
+}
+TEST(parser_parse, nine_hundred_million) {
+    std::string text{ "nine hundred million." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 900'000'000));
+}
 TEST(parser_parse, nine_hundred_and_ninety_nine_million) {
-    EXPECT_EQ(parser::parse("nine hundred and ninety nine thousand million."), "999000000.");
+    std::string text{ "nine hundred and ninety nine thousand million." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 999'000'000));
 }
 TEST(parser_parse, nine_hundred_and_ninety_dash_nine_million) {
-    EXPECT_EQ(parser::parse("nine hundred and ninety dash nine thousand million."), "999000000.");
+    std::string text{ "nine hundred and ninety-nine thousand million." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 999'000'000));
 }
 TEST(parser_parse, nine_hundred_and_ninety_nine_million_nine_hundred_and_ninety_thousand_nine_hundred_and_ninety_nine) {
-    EXPECT_EQ(parser::parse("nine hundred and ninety nine million nine hundred and ninety nine thousand nine hundred and ninety nine."),
-        "999999000000."
-    );
+    std::string text{ "nine hundred and ninety nine million nine hundred and ninety nine thousand nine hundred and ninety nine." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 999'999'999));
 }
-TEST(parser_parse, one_billion) { EXPECT_EQ(parser::parse("one billion."), "1000000000."); }
+TEST(parser_parse, one_billion) {
+    std::string text{ "one billion." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000'000'000));
+}
 
-TEST(parser_parse, one_hundred_and_two) { EXPECT_EQ(parser::parse("one hundred and two."), "102."); }
-TEST(parser_parse, one_thousand_and_two) { EXPECT_EQ(parser::parse("one thousand and two."), "1002."); }
-TEST(parser_parse, one_million_and_two) { EXPECT_EQ(parser::parse("one million and two."), "1000002."); }
-TEST(parser_parse, one_hundred_and_twenty_three) { EXPECT_EQ(parser::parse("one hundred and twenty three."), "123."); }
-TEST(parser_parse, one_hundred_and_twenty_dash_three) { EXPECT_EQ(parser::parse("one hundred and twenty dash three."), "123."); }
-TEST(parser_parse, one_thousand_and_twenty_three) { EXPECT_EQ(parser::parse("one thousand and twenty three."), "1023."); }
-TEST(parser_parse, one_thousand_and_twenty_dash_three) { EXPECT_EQ(parser::parse("one thousand and twenty dash three."), "1023."); }
-TEST(parser_parse, one_million_and_twenty_three) { EXPECT_EQ(parser::parse("one million and twenty three."), "1000023."); }
-TEST(parser_parse, one_million_and_twenty_dash_three) { EXPECT_EQ(parser::parse("one million and twenty dash three."), "1000023."); }
-TEST(parser_parse, one_thousand_two_hundred_and_three) { EXPECT_EQ(parser::parse("one thousand two hundred and three."), "1203."); }
-TEST(parser_parse, one_million_two_hundred_and_three) { EXPECT_EQ(parser::parse("one million two hundred and three."), "1000203."); }
-TEST(parser_parse, one_million_two_thousand_and_three) { EXPECT_EQ(parser::parse("one million two thousand and three."), "1002003."); }
+TEST(parser_parse, one_hundred_and_two) {
+    std::string text{ "one hundred and two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "102.");
+}
+TEST(parser_parse, one_thousand_and_two) {
+    std::string text{ "one thousand and two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'002));
+}
+TEST(parser_parse, one_million_and_two) {
+    std::string text{ "one million and two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000'002));
+}
+TEST(parser_parse, one_hundred_and_twenty_three) {
+    std::string text{ "one hundred and twenty three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "123.");
+}
+TEST(parser_parse, one_hundred_and_twenty_dash_three) {
+    std::string text{ "one hundred and twenty-three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "123.");
+}
+TEST(parser_parse, one_thousand_and_twenty_three) {
+    std::string text{ "one thousand and twenty three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'023));
+}
+TEST(parser_parse, one_thousand_and_twenty_dash_three) {
+    std::string text{ "one thousand and twenty-three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'023));
+}
+TEST(parser_parse, one_million_and_twenty_three) {
+    std::string text{ "one million and twenty three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000'023));
+}
+TEST(parser_parse, one_million_and_twenty_dash_three) {
+    std::string text{ "one million and twenty-three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000'023));
+}
+TEST(parser_parse, one_thousand_two_hundred_and_three) {
+    std::string text{ "one thousand two hundred and three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'203));
+}
+TEST(parser_parse, one_million_two_hundred_and_three) {
+    std::string text{ "one million two hundred and three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000'203));
+}
+TEST(parser_parse, one_million_two_thousand_and_three) {
+    std::string text{ "one million two thousand and three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'002'003));
+}
 TEST(parser_parse, one_million_two_thousand_three_hundred_and_four) {
-    EXPECT_EQ(parser::parse("one million two thousand three hundred and four."), "1002304.");
+    std::string text{ "one million two thousand three hundred and four." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'002'304));
 }
 
 TEST(parser_parse, three_million_six_hundred_and_three_thousand_eight_hundred_and_two) {
-    EXPECT_EQ(parser::parse("three million six hundred and three thousand eight hundred and two."), "3603802.");
+    std::string text{ "three million six hundred and three thousand eight hundred and two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 3'603'802));
 }
 TEST(parser_parse, seven_million_five_hundred_and_twelve_thousand_one_hundred_and_forty_five) {
-    EXPECT_EQ(parser::parse("seven million five hundred and twelve thousand one hundred and forty five."), "7512145.");
+    std::string text{ "seven million five hundred and twelve thousand one hundred and forty five." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 7'512'145));
 }
 TEST(parser_parse, three_million_eight_hundred_thousand_and_eighteen) {
-    EXPECT_EQ(parser::parse("three million eight hundred thousand and eighteen."), "3800018.");
+    std::string text{ "three million eight hundred thousand and eighteen." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 3'800'018));
 }
 
-TEST(parser_parse, Zero) { EXPECT_EQ(parser::parse("Zero."), "0."); }
-TEST(parser_parse, ZERO) { EXPECT_EQ(parser::parse("ZERO."), "0."); }
-TEST(parser_parse, twenty_dash_One) { EXPECT_EQ(parser::parse("twenty dash One."), "21."); }
-TEST(parser_parse, twenty_dash_ONE) { EXPECT_EQ(parser::parse("twenty dash ONE."), "21."); }
-TEST(parser_parse, one_BILLION) { EXPECT_EQ(parser::parse("one BILLION."), "1000000000."); }
+TEST(parser_parse, Zero) {
+    std::string text{ "Zero." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "0.");
+}
+TEST(parser_parse, ZERO) {
+    std::string text{ "ZERO." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "0.");
+}
+TEST(parser_parse, twenty_dash_One) {
+    std::string text{ "twenty dash One." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "21.");
+}
+TEST(parser_parse, twenty_dash_ONE) {
+    std::string text{ "twenty dash ONE." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "21.");
+}
+TEST(parser_parse, one_BILLION) {
+    std::string text{ "one BILLION." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), fmt::format("{}.", 1'000'000'000));
+}
 
-TEST(parser_parse, one_and_two) { EXPECT_EQ(parser::parse("one and two."), "1 and 2."); }
-TEST(parser_parse, two_and_one) { EXPECT_EQ(parser::parse("two and one."), "2 and 1."); }
-TEST(parser_parse, one_hundred_comma_and_two) { EXPECT_EQ(parser::parse("one hundred, and two."), "100, and 2."); }
-TEST(parser_parse, one_hundred_and_two_and_three) { EXPECT_EQ(parser::parse("one hundred and two and three."), "102 and 3."); }
-TEST(parser_parse, one_hundred_and_three_and_two) { EXPECT_EQ(parser::parse("one hundred and three and two."), "103 and 2."); }
-TEST(parser_parse, one_hundred_two_hundred) { EXPECT_THROW(parser::parse("one hundred two hundred."), invalid_token_error); }
+TEST(parser_parse, one_and_two) {
+    std::string text{ "one and two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "1 and 2.");
+}
+TEST(parser_parse, two_and_one) {
+    std::string text{ "two and one." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "2 and 1.");
+}
+TEST(parser_parse, one_hundred_comma_and_two) {
+    std::string text{ "one hundred, and two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "100, and 2.");
+}
+TEST(parser_parse, one_hundred_and_two_and_three) {
+    std::string text{ "one hundred and two and three." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "102 and 3.");
+}
+TEST(parser_parse, one_hundred_and_three_and_two) {
+    std::string text{ "one hundred and three and two." };
+    EXPECT_EQ(std::make_unique<parser>(std::move(text))->parse(), "103 and 2.");
+}
+TEST(parser_parse, one_hundred_two_hundred) {
+    std::string text{ "one hundred two hundred." };
+    EXPECT_THROW((void) std::make_unique<parser>(std::move(text))->parse(), invalid_token_error);
+}

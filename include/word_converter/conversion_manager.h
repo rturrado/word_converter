@@ -5,6 +5,7 @@
 #include "parser.h"
 
 #include <algorithm>  // for_each
+#include <memory>  // make_unique
 #include <string>
 
 using input_reader_up = std::unique_ptr<input_reader>;
@@ -21,7 +22,7 @@ struct conversion_manager {
             auto text{ reader->read() };
             // Texts that do not form a sentence (i.e. that do not end in a period) are not converted
             if (is_sentence(text)) {
-                text = parser::parse(text);
+                text = std::make_unique<parser>(text)->parse();
             }
             // All the texts are written out though
             std::ranges::for_each(writers, [&text](auto& writer) { writer->write(text); });

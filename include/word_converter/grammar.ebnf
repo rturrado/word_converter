@@ -1,0 +1,65 @@
+start                           ::= sentence
+
+sentence                        ::= sentence_prefix sentence_body
+sentence_prefix                 ::= text_without_number_expressions
+sentence_body                   ::= number_expression rest_of_sentence_body
+rest_of_sentence_body           ::= text_without_number_expression sentence_body
+                                  | period
+
+text_without_number_expressions ::= text_without_number_expression text_without_number_expressions
+                                  | nothing
+text_without_number_expression  ::= other
+
+number_expression               ::= billions
+                                  | ten_to_ninety_nine
+                                  | zero
+
+billions                        ::= hundreds rest_of_billions
+rest_of_billions                ::= billion below_one_billion
+                                  | nothing
+billion                         ::= "billion"
+below_one_billion               ::= millions
+                                  | and one_to_ninety_nine
+                                  | nothing
+
+millions                        ::= hundreds rest_of_millions
+rest_of_millions                ::= million below_one_million
+                                  | nothing
+million                         ::= "million"
+below_one_million               ::= thousands
+                                  | and one_to_ninety_nine
+                                  | nothing
+
+thousands                       ::= hundreds rest_of_thousands
+rest_of_thousands               ::= thousand below_one_thousand
+                                  | nothing
+thousand                        ::= "thousand"
+below_one_thousand              ::= one_to_nine hundred and one_to_ninety_nine
+                                  | and one_to_ninety_nine
+                                  | nothing
+
+hundreds                        ::= one_to_nine rest_of_hundreds
+rest_of_hundreds                ::= hundred below_one_hundred
+                                  | nothing
+hundred                         ::= "hundred"
+below_one_hundred               ::= and one_to_ninety_nine
+                                  | nothing
+
+one_to_ninety_nine              ::= one_to_nine | ten_to_ninety_nine
+ten_to_ninety_nine              ::= ten_to_nineteen | twenty_to_ninety_nine
+twenty_to_ninety_nine           ::= tens rest_of_tents
+rest_of_tens                    ::= dash one_to_nine
+                                  | one_to_nine
+                                  | nothing
+tens                            ::= "twenty" | "thirty" | "forty" | "fifty" | "sixty" | "seventy" | "eighty" | "ninety"
+ten_to_nineteen                 ::= "ten" | "eleven" | "twelve" | "thirteen" | "fourteen" | "fifteen" | "sixteen" | "seventeen" | "eighteen" | "nineteen"
+one_to_nine                     ::= one
+                                  | two_to_nine
+two_to_nine                     ::= "two" | "three" | "four" | "five" | "six" | "seven" | "eight" | "nine"
+one                             ::= "one"
+zero                            ::= "zero"
+
+and                             ::= "and"
+dash                            ::= '-'
+period                          ::= '.'
+other                           ::= [a-zA-Z]+ -zero -one_to_nine -ten_to_nineteen -tens -hundred -thousand -million -billion

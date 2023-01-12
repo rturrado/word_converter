@@ -2,6 +2,7 @@
 
 #include "generator.hpp"
 
+#include <cstdint>  // int64_t
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <regex>
@@ -115,7 +116,7 @@ inline static const std::unordered_map<std::string, lexeme_t> word_to_lexeme_map
 
 class tokenizer {
     std::string text_{};
-    long source_location_{};
+    std::int64_t source_location_{};
 public:
     explicit tokenizer(std::string text)
         : text_{ std::move(text) }

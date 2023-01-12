@@ -38,7 +38,7 @@ TEST(parser_parse, text_number_text_number_text) {
 
 TEST(parser_parse, number_number) {
     std::string text{ "one two." };
-    EXPECT_THROW(std::make_unique<parser>(std::move(text))->parse(), invalid_token_error);
+    EXPECT_THROW((void) std::make_unique<parser>(std::move(text))->parse(), invalid_token_error);
 }
  
 TEST(parser_parse, zero) {

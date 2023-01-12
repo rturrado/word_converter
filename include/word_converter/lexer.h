@@ -217,6 +217,9 @@ public:
     [[nodiscard]] auto get_current_lexeme() const {
         return current_token_.lexeme;
     }
+    [[nodiscard]] auto get_current_text() const {
+        return current_token_.text;
+    }
     [[nodiscard]] auto get_source_text() const {
         return tokenizer_.get_source_text();
     }

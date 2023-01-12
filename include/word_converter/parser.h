@@ -6,6 +6,7 @@
 #include <memory>  // make_unique, unique_ptr
 #include <numeric>  // accumulate
 #include <ranges>
+#include <rtc/string.h>
 #include <stdexcept>  // runtime_error
 #include <string>
 #include <unordered_map>
@@ -67,7 +68,7 @@ private:
 
 
 class number_expression_stack {
-    std::vector<int> numbers_{};  // for a number expression
+    std::vector<int> numbers_{};
 public:
     void clear() {
         numbers_.clear();
@@ -76,16 +77,14 @@ public:
         if (numbers_.empty()) {
             numbers_.push_back(number);
         } else if (number > numbers_.back()) {
-            int sum{ numbers_.back() };
-            while (sum < number) {
+            int sum{};
+            while ((not numbers_.empty()) and (sum + numbers_.back() < number)) {
+                sum += numbers_.back();
                 numbers_.pop_back();
-                if (not numbers_.empty()) {
-                    sum += numbers_.back();
-                }
             }
-            numbers_.push_back(number + sum);
+            numbers_.push_back(number * sum);
         } else if (number < numbers_.back()) {
-            numbers_.back() *= number;
+            numbers_.push_back(number);
         } else if (number == numbers_.back()) {
             throw invalid_number_expression_error{
                 fmt::format("{} {}", std::to_string(number), std::to_string(numbers_.back()))
@@ -102,62 +101,73 @@ class parser {
     std::string input_text_{};  // text to parse
     std::string output_text_{};  // parsed text
     std::unique_ptr<lexer> lexer_{};
-    std::string spaces_{};  // last token, in case it was whitespace
-    number_expression_stack numbers_{};
+    number_expression_stack current_number_expression_stack_{};
 private:
-    void advance_to_next_token() {
+    void flush_current_token_to_output_text() {
+        output_text_ += lexer_->get_current_text();
+    }
+    void flush_current_number_expression_to_output_text() {
+        output_text_ += std::to_string(current_number_expression_stack_.value());
+    }
+    void advance_to_next_token(bool flush = false) {
         lexer_->advance_to_next_token();
         if (lexer_->get_current_lexeme() == lexeme_t::space) {
-            spaces_ = lexer_->get_current_token().text;
+            if (flush) {
+                flush_current_token_to_output_text();
+            }
             lexer_->advance_to_next_token();
         }
     }
-    void flush_to_output_text() {
-        output_text_ += spaces_;
-        output_text_ += lexer_->get_current_token().text;
-        spaces_.clear();
-    }
-    void flush_to_output_text(const std::string& number_str) {
-        output_text_ += spaces_;
-        output_text_ += number_str;
-        output_text_ += lexer_->get_current_token().text;
-        spaces_.clear();
-    }
 private:
-    [[nodiscard]] bool and_connector() {
-        if (lexer_->get_current_lexeme() == lexeme_t::and_connector) {
-            advance_to_next_token();
+    [[nodiscard]] bool space(bool flush = false) {
+        if (lexer_->get_current_lexeme() == lexeme_t::space) {
+            if (flush) {
+                flush_current_token_to_output_text();
+            }
+            advance_to_next_token(flush);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool dash() {
+    [[nodiscard]] bool dash(bool flush = false) {
         if (lexer_->get_current_lexeme() == lexeme_t::dash) {
-            advance_to_next_token();
+            if (flush) {
+                flush_current_token_to_output_text();
+            }
+            advance_to_next_token(flush);
             return true;
         }
         return false;
     }
     [[nodiscard]] bool period() {
         if (lexer_->get_current_lexeme() == lexeme_t::period) {
-            flush_to_output_text();
-            advance_to_next_token();
+            flush_current_token_to_output_text();
+            advance_to_next_token(true);
+            return true;
+        }
+        return false;
+    }
+    [[nodiscard]] bool and_connector(bool flush = false) {
+        if (lexer_->get_current_lexeme() == lexeme_t::and_connector) {
+            if (flush) {
+                flush_current_token_to_output_text();
+            }
+            advance_to_next_token(flush);
             return true;
         }
         return false;
     }
     [[nodiscard]] bool other() {
         if (lexer_->get_current_lexeme() == lexeme_t::other) {
-            flush_to_output_text();
-            advance_to_next_token();
+            flush_current_token_to_output_text();
+            advance_to_next_token(true);
             return true;
         }
         return false;
     }
     [[nodiscard]] bool zero() {
         if (lexer_->get_current_lexeme() == lexeme_t::zero) {
-            auto zero_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(zero_number);
+            current_number_expression_stack_.push(0);
             advance_to_next_token();
             return true;
         }
@@ -165,8 +175,7 @@ private:
     }
     [[nodiscard]] bool one() {
         if (lexer_->get_current_lexeme() == lexeme_t::one) {
-            auto one_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(one_number);
+            current_number_expression_stack_.push(1);
             advance_to_next_token();
             return true;
         }
@@ -174,8 +183,9 @@ private:
     }
     [[nodiscard]] bool two_to_nine() {
         if (lexer_->get_current_lexeme() == lexeme_t::two_to_nine) {
-            auto one_to_nine_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(one_to_nine_number);
+            auto word_lc{ rtc::string::to_lowercase(lexer_->get_current_text()) };
+            auto one_to_nine_number{ word_to_number_map.at(word_lc) };
+            current_number_expression_stack_.push(one_to_nine_number);
             advance_to_next_token();
             return true;
         }
@@ -186,8 +196,9 @@ private:
     }
     [[nodiscard]] bool ten_to_nineteen() {
         if (lexer_->get_current_lexeme() == lexeme_t::ten_to_nineteen) {
-            auto ten_to_nineteen_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(ten_to_nineteen_number);
+            auto word_lc{ rtc::string::to_lowercase(lexer_->get_current_text()) };
+            auto ten_to_nineteen_number{ word_to_number_map.at(word_lc) };
+            current_number_expression_stack_.push(ten_to_nineteen_number);
             advance_to_next_token();
             return true;
         }
@@ -195,8 +206,9 @@ private:
     }
     [[nodiscard]] bool twenty_to_ninety_nine() {
         if (lexer_->get_current_lexeme() == lexeme_t::tens) {
-            auto tens_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(tens_number);
+            auto word_lc{ rtc::string::to_lowercase(lexer_->get_current_text()) };
+            auto tens_number{ word_to_number_map.at(word_lc) };
+            current_number_expression_stack_.push(tens_number);
             advance_to_next_token();
             if (dash()) {
                 return one_to_nine();
@@ -205,7 +217,7 @@ private:
                 return true;
             }
         }
-        throw invalid_token_error{ lexer_->get_current_token() };
+        return false;
     }
     [[nodiscard]] bool ten_to_ninety_nine() {
         return ten_to_nineteen() or twenty_to_ninety_nine();
@@ -214,13 +226,12 @@ private:
         return one_to_nine() or ten_to_ninety_nine();
     }
     [[nodiscard]] bool below_one_hundred() {
-        return (lexer_->get_current_lexeme() == lexeme_t::end)
-            or (and_connector() and one_to_ninety_nine());
+        return (and_connector() and one_to_ninety_nine());
     }
     [[nodiscard]] bool hundred() {
         if (lexer_->get_current_lexeme() == lexeme_t::hundred) {
-            auto hundred_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(hundred_number);
+            auto hundred_number{ word_to_number_map.at(lexer_->get_current_text()) };
+            current_number_expression_stack_.push(hundred_number);
             advance_to_next_token();
             return true;
         }
@@ -229,21 +240,19 @@ private:
     [[nodiscard]] bool hundreds() {
         if (one_to_nine()) {
             if (hundred()) {
-                return below_one_hundred();
+                (void) below_one_hundred();
             }
             return true;
         }
         return false;
     }
     [[nodiscard]] bool below_one_thousand() {
-        return (lexer_->get_current_lexeme() == lexeme_t::end)
-            or (and_connector() and one_to_ninety_nine())
-            or (one_to_nine() and hundred() and and_connector() and one_to_ninety_nine());
+        return (and_connector() and one_to_ninety_nine()) or
+            (one_to_nine() and hundred() and and_connector() and one_to_ninety_nine());
     }
     [[nodiscard]] bool thousand() {
         if (lexer_->get_current_lexeme() == lexeme_t::thousand) {
-            auto thousand_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(thousand_number);
+            current_number_expression_stack_.push(1'000);
             advance_to_next_token();
             return true;
         }
@@ -252,21 +261,21 @@ private:
     [[nodiscard]] bool thousands() {
         if (hundreds()) {
             if (thousand()) {
-                return below_one_thousand();
+                (void) below_one_thousand();
+            } else if (hundred()) {
+                (void) below_one_hundred();
             }
             return true;
         }
         return false;
     }
     [[nodiscard]] bool below_one_million() {
-        return (lexer_->get_current_lexeme() == lexeme_t::end)
-            or (and_connector() and one_to_ninety_nine())
-            or thousands();
+        return (and_connector() and one_to_ninety_nine()) or
+            thousands();
     }
     [[nodiscard]] bool million() {
         if (lexer_->get_current_lexeme() == lexeme_t::million) {
-            auto million_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(million_number);
+            current_number_expression_stack_.push(1'000'000);
             advance_to_next_token();
             return true;
         }
@@ -275,21 +284,23 @@ private:
     [[nodiscard]] bool millions() {
         if (hundreds()) {
             if (million()) {
-                return below_one_million();
+                (void) below_one_million();
+            } else if (thousand()) {
+                (void) below_one_thousand();
+            } else if (hundred()) {
+                (void) below_one_hundred();
             }
             return true;
         }
         return false;
     }
     [[nodiscard]] bool below_one_billion() {
-        return (lexer_->get_current_lexeme() == lexeme_t::end)
-            or (and_connector() and one_to_ninety_nine())
-            or millions();
+        return (and_connector() and one_to_ninety_nine()) or
+            millions();
     }
     [[nodiscard]] bool billion() {
         if (lexer_->get_current_lexeme() == lexeme_t::billion) {
-            auto billion_number{ word_to_number_map.at(lexer_->get_current_token().text) };
-            numbers_.push(billion_number);
+            current_number_expression_stack_.push(1'000'000'000);
             advance_to_next_token();
             return true;
         }
@@ -298,7 +309,13 @@ private:
     [[nodiscard]] bool billions() {
         if (hundreds()) {
             if (billion()) {
-                return below_one_billion();
+                (void) below_one_billion();
+            } else if (million()) {
+                (void) below_one_million();
+            } else if (thousand()) {
+                (void) below_one_thousand();
+            } else if (hundred()) {
+                (void) below_one_hundred();
             }
             return true;
         }
@@ -306,35 +323,38 @@ private:
     }
     void number_expression() {
         auto start_source_location{ lexer_->get_source_location() };
-        numbers_.clear();
-        if (zero() or ten_to_nineteen() or billions()) {
-            flush_to_output_text(std::to_string(numbers_.value()));
+        if (zero() or ten_to_nineteen() or twenty_to_ninety_nine() or billions()) {
+            flush_current_number_expression_to_output_text();
         } else {
             auto end_source_location{ lexer_->get_source_location() };
             auto source_sub_expression{ lexer_->get_source_text().substr(
                 start_source_location, end_source_location - start_source_location ) };
             throw invalid_number_expression_error{ source_sub_expression };
         }
+        current_number_expression_stack_.clear();
+    }
+    bool text_without_number_expression() {
+        return (space(true) or dash(true) or and_connector(true) or other());
     }
     void text_without_number_expressions() {
-        while (and_connector() or dash() or other()) {
-        }
-    }
-    void sentence_body() {
-        if (period()) {
-            return;
-        }
-        number_expression();
-        if (other()) {
-            sentence_body();
-        }
-    }
-    void sentence_prefix() {
-        text_without_number_expressions();
+        while (text_without_number_expression());
     }
     void sentence() {
-        sentence_prefix();
-        sentence_body();
+        text_without_number_expressions();
+        if (period()) {
+            return;
+        } else {
+            number_expression();
+            if (period()) {
+                return;
+            } else {
+                if (text_without_number_expression()) {
+                    sentence();
+                } else {
+                    throw invalid_token_error{ lexer_->get_current_token() };
+                }
+            }
+        }
     }
     void start() {
         sentence();

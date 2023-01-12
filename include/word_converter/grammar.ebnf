@@ -3,6 +3,7 @@ start                           ::= sentence
 sentence                        ::= sentence_prefix sentence_body
 sentence_prefix                 ::= text_without_number_expressions
 sentence_body                   ::= number_expression rest_of_sentence_body
+                                  | period
 rest_of_sentence_body           ::= text_without_number_expression sentence_body
                                   | period
 
@@ -16,6 +17,9 @@ number_expression               ::= billions
 
 billions                        ::= hundreds rest_of_billions
 rest_of_billions                ::= billion below_one_billion
+                                  | million below_one_million
+                                  | thousand below_one_thousand
+                                  | hundred below_one_hundred
                                   | nothing
 billion                         ::= "billion"
 below_one_billion               ::= millions
@@ -24,6 +28,8 @@ below_one_billion               ::= millions
 
 millions                        ::= hundreds rest_of_millions
 rest_of_millions                ::= million below_one_million
+                                  | thousand below_one_thousand
+                                  | hundred below_one_hundred
                                   | nothing
 million                         ::= "million"
 below_one_million               ::= thousands
@@ -32,6 +38,7 @@ below_one_million               ::= thousands
 
 thousands                       ::= hundreds rest_of_thousands
 rest_of_thousands               ::= thousand below_one_thousand
+                                  | hundred below_one_hundred
                                   | nothing
 thousand                        ::= "thousand"
 below_one_thousand              ::= one_to_nine hundred and one_to_ninety_nine

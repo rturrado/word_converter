@@ -16,6 +16,8 @@ number_expression               ::= billions
                                   | zero
 
 billions                        ::= hundreds rest_of_billions
+billions                        ::= twenty_to_ninety_nine rest_of_billions
+billions                        ::= ten_to_nineteen rest_of_billions
 rest_of_billions                ::= billion below_one_billion
                                   | million below_one_million
                                   | thousand below_one_thousand
@@ -27,6 +29,8 @@ below_one_billion               ::= millions
                                   | nothing
 
 millions                        ::= hundreds rest_of_millions
+millions                        ::= twenty_to_ninety_nine rest_of_millions
+millions                        ::= ten_to_nineteen rest_of_millions
 rest_of_millions                ::= million below_one_million
                                   | thousand below_one_thousand
                                   | hundred below_one_hundred
@@ -37,6 +41,8 @@ below_one_million               ::= thousands
                                   | nothing
 
 thousands                       ::= hundreds rest_of_thousands
+thousands                       ::= twenty_to_ninety_nine rest_of_thousands
+thousands                       ::= ten_to_nineteen rest_of_thousands
 rest_of_thousands               ::= thousand below_one_thousand
                                   | hundred below_one_hundred
                                   | nothing

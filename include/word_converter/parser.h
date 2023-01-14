@@ -1,10 +1,10 @@
 #pragma once
 
+#include "ast.h"
 #include "lexer.h"
 
 #include <fmt/core.h>
 #include <memory>  // make_unique, unique_ptr
-#include <numeric>  // accumulate
 #include <ranges>
 #include <rtc/string.h>
 #include <stdexcept>  // runtime_error
@@ -57,299 +57,244 @@ private:
     std::string message_{ "invalid token: " };
 };
 
-struct invalid_number_expression_error : public std::runtime_error {
-    explicit invalid_number_expression_error(const std::string& message) : std::runtime_error{ "" } {
-        message_ += fmt::format("'{}'", message);
-    }
-    [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); };
-private:
-    std::string message_{ "invalid number expression error: " };
-};
-
-
-class number_expression_stack {
-    std::vector<int> numbers_{};
-public:
-    void clear() {
-        numbers_.clear();
-    }
-    void push(int number) {
-        if (numbers_.empty()) {
-            numbers_.push_back(number);
-        } else if (number > numbers_.back()) {
-            int sum{};
-            while ((not numbers_.empty()) and (sum + numbers_.back() < number)) {
-                sum += numbers_.back();
-                numbers_.pop_back();
-            }
-            numbers_.push_back(number * sum);
-        } else if (number < numbers_.back()) {
-            numbers_.push_back(number);
-        } else if (number == numbers_.back()) {
-            throw invalid_number_expression_error{
-                fmt::format("{} {}", std::to_string(number), std::to_string(numbers_.back()))
-            };
-        }
-    }
-    [[nodiscard]] int value() const {
-        return std::accumulate(numbers_.begin(), numbers_.end(), 0);
-    }
-};
-
 
 class parser {
-    std::string input_text_{};  // text to parse
-    std::string output_text_{};  // parsed text
+    std::string text_{};  // text to parse
     std::unique_ptr<lexer> lexer_{};
-    number_expression_stack current_number_expression_stack_{};
+    std::unique_ptr<ast::tree> ast_{};
 private:
-    void flush_current_token_to_output_text() {
-        output_text_ += lexer_->get_current_text();
-    }
-    void flush_current_number_expression_to_output_text() {
-        output_text_ += std::to_string(current_number_expression_stack_.value());
-    }
-    void advance_to_next_token(bool flush = false) {
+    void advance_to_next_token(auto& node) {
         lexer_->advance_to_next_token();
         if (lexer_->get_current_lexeme() == lexeme_t::space) {
-            if (flush) {
-                flush_current_token_to_output_text();
-            }
+            node.add(ast::text_node{ lexer_->get_current_text() });
             lexer_->advance_to_next_token();
         }
     }
 private:
-    [[nodiscard]] bool space(bool flush = false) {
+    [[nodiscard]] bool space(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::space) {
-            if (flush) {
-                flush_current_token_to_output_text();
-            }
-            advance_to_next_token(flush);
+            node.add(ast::text_node{ lexer_->get_current_text() });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool dash(bool flush = false) {
+    [[nodiscard]] bool dash(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::dash) {
-            if (flush) {
-                flush_current_token_to_output_text();
-            }
-            advance_to_next_token(flush);
+            node.add(ast::text_node{ lexer_->get_current_text() });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool period() {
+    [[nodiscard]] bool period(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::period) {
-            flush_current_token_to_output_text();
-            advance_to_next_token(true);
+            node.add(ast::text_node{ lexer_->get_current_text() });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool and_connector(bool flush = false) {
+    [[nodiscard]] bool and_connector(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::and_connector) {
-            if (flush) {
-                flush_current_token_to_output_text();
-            }
-            advance_to_next_token(flush);
+            node.add(ast::text_node{ lexer_->get_current_text() });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool other() {
+    [[nodiscard]] bool other(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::other) {
-            flush_current_token_to_output_text();
-            advance_to_next_token(true);
+            node.add(ast::text_node{ lexer_->get_current_text() });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool zero() {
+    [[nodiscard]] bool zero(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::zero) {
-            current_number_expression_stack_.push(0);
-            advance_to_next_token();
+            node.add(ast::int_node{ 0 });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool one() {
+    [[nodiscard]] bool one(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::one) {
-            current_number_expression_stack_.push(1);
-            advance_to_next_token();
+            node.add(ast::int_node{ 1 });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool two_to_nine() {
+    [[nodiscard]] bool two_to_nine(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::two_to_nine) {
             auto word_lc{ rtc::string::to_lowercase(lexer_->get_current_text()) };
             auto one_to_nine_number{ word_to_number_map.at(word_lc) };
-            current_number_expression_stack_.push(one_to_nine_number);
-            advance_to_next_token();
+            node.add(ast::int_node{ one_to_nine_number });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool one_to_nine() {
-        return one() or two_to_nine();
+    [[nodiscard]] bool one_to_nine(auto& node) {
+        return one(node) or two_to_nine(node);
     }
-    [[nodiscard]] bool ten_to_nineteen() {
+    [[nodiscard]] bool ten_to_nineteen(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::ten_to_nineteen) {
             auto word_lc{ rtc::string::to_lowercase(lexer_->get_current_text()) };
             auto ten_to_nineteen_number{ word_to_number_map.at(word_lc) };
-            current_number_expression_stack_.push(ten_to_nineteen_number);
-            advance_to_next_token();
+            node.add(ast::int_node{ ten_to_nineteen_number });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool twenty_to_ninety_nine() {
+    [[nodiscard]] bool twenty_to_ninety_nine(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::tens) {
             auto word_lc{ rtc::string::to_lowercase(lexer_->get_current_text()) };
             auto tens_number{ word_to_number_map.at(word_lc) };
-            current_number_expression_stack_.push(tens_number);
-            advance_to_next_token();
-            if (dash()) {
-                return one_to_nine();
+            node.add(ast::int_node{ tens_number });
+            advance_to_next_token(node);
+            if (dash(node)) {
+                return one_to_nine(node);
             } else {
-                (void) one_to_nine();
+                (void) one_to_nine(node);
                 return true;
             }
         }
         return false;
     }
-    [[nodiscard]] bool ten_to_ninety_nine() {
-        return ten_to_nineteen() or twenty_to_ninety_nine();
+    [[nodiscard]] bool ten_to_ninety_nine(auto& node) {
+        return ten_to_nineteen(node) or twenty_to_ninety_nine(node);
     }
-    [[nodiscard]] bool one_to_ninety_nine() {
-        return one_to_nine() or ten_to_ninety_nine();
+    [[nodiscard]] bool one_to_ninety_nine(auto& node) {
+        return one_to_nine(node) or ten_to_ninety_nine(node);
     }
-    [[nodiscard]] bool below_one_hundred() {
-        return (and_connector() and one_to_ninety_nine());
+    [[nodiscard]] bool below_one_hundred(auto& node) {
+        return (and_connector(node) and one_to_ninety_nine(node));
     }
-    [[nodiscard]] bool hundred() {
+    [[nodiscard]] bool hundred(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::hundred) {
-            auto hundred_number{ word_to_number_map.at(lexer_->get_current_text()) };
-            current_number_expression_stack_.push(hundred_number);
-            advance_to_next_token();
+            node.add(ast::int_node{ 100 });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool hundreds() {
-        if (one_to_nine()) {
-            if (hundred()) {
-                (void) below_one_hundred();
+    [[nodiscard]] bool hundreds(auto& node) {
+        if (one_to_nine(node)) {
+            if (hundred(node)) {
+                (void) below_one_hundred(node);
             }
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool below_one_thousand() {
-        return (and_connector() and one_to_ninety_nine()) or
-            (one_to_nine() and hundred() and and_connector() and one_to_ninety_nine());
+    [[nodiscard]] bool below_one_thousand(auto& node) {
+        return (and_connector(node) and one_to_ninety_nine(node)) or
+            (one_to_nine(node) and hundred(node) and and_connector(node) and one_to_ninety_nine(node));
     }
-    [[nodiscard]] bool thousand() {
+    [[nodiscard]] bool thousand(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::thousand) {
-            current_number_expression_stack_.push(1'000);
-            advance_to_next_token();
+            node.add(ast::int_node{ 1'000 });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool thousands() {
-        if (hundreds()) {
-            if (thousand()) {
-                (void) below_one_thousand();
-            } else if (hundred()) {
-                (void) below_one_hundred();
+    [[nodiscard]] bool thousands(auto& node) {
+        if (hundreds(node) or twenty_to_ninety_nine(node) or ten_to_nineteen(node)) {
+            if (thousand(node)) {
+                (void) below_one_thousand(node);
+            } else if (hundred(node)) {
+                (void) below_one_hundred(node);
             }
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool below_one_million() {
-        return (and_connector() and one_to_ninety_nine()) or
-            thousands();
+    [[nodiscard]] bool below_one_million(auto& node) {
+        return (and_connector(node) and one_to_ninety_nine(node)) or
+            thousands(node);
     }
-    [[nodiscard]] bool million() {
+    [[nodiscard]] bool million(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::million) {
-            current_number_expression_stack_.push(1'000'000);
-            advance_to_next_token();
+            node.add(ast::int_node{ 1'000'000 });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool millions() {
-        if (hundreds()) {
-            if (million()) {
-                (void) below_one_million();
-            } else if (thousand()) {
-                (void) below_one_thousand();
-            } else if (hundred()) {
-                (void) below_one_hundred();
+    [[nodiscard]] bool millions(auto& node) {
+        if (hundreds(node) or twenty_to_ninety_nine(node) or ten_to_nineteen(node)) {
+            if (million(node)) {
+                (void) below_one_million(node);
+            } else if (thousand(node)) {
+                (void) below_one_thousand(node);
+            } else if (hundred(node)) {
+                (void) below_one_hundred(node);
             }
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool below_one_billion() {
-        return (and_connector() and one_to_ninety_nine()) or
-            millions();
+    [[nodiscard]] bool below_one_billion(auto& node) {
+        return (and_connector(node) and one_to_ninety_nine(node)) or
+            millions(node);
     }
-    [[nodiscard]] bool billion() {
+    [[nodiscard]] bool billion(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::billion) {
-            current_number_expression_stack_.push(1'000'000'000);
-            advance_to_next_token();
+            node.add(ast::int_node{ 1'000'000'000 });
+            advance_to_next_token(node);
             return true;
         }
         return false;
     }
-    [[nodiscard]] bool billions() {
-        if (hundreds()) {
-            if (billion()) {
-                (void) below_one_billion();
-            } else if (million()) {
-                (void) below_one_million();
-            } else if (thousand()) {
-                (void) below_one_thousand();
-            } else if (hundred()) {
-                (void) below_one_hundred();
+    [[nodiscard]] bool billions(auto& node) {
+        if (hundreds(node) or twenty_to_ninety_nine(node) or ten_to_nineteen(node)) {
+            if (billion(node)) {
+                (void) below_one_billion(node);
+            } else if (million(node)) {
+                (void) below_one_million(node);
+            } else if (thousand(node)) {
+                (void) below_one_thousand(node);
+            } else if (hundred(node)) {
+                (void) below_one_hundred(node);
             }
             return true;
         }
         return false;
     }
-    void number_expression() {
+    void number_expression(auto& parent_node) {
         auto start_source_location{ lexer_->get_source_location() };
-        if (zero() or ten_to_nineteen() or twenty_to_ninety_nine() or billions()) {
-            flush_current_number_expression_to_output_text();
+        ast::number_expression_node node{};
+        if (zero(node) or billions(node)) {
+            parent_node.add(std::move(node));
         } else {
             auto end_source_location{ lexer_->get_source_location() };
             auto source_sub_expression{ lexer_->get_source_text().substr(
                 start_source_location, end_source_location - start_source_location ) };
             throw invalid_number_expression_error{ source_sub_expression };
         }
-        current_number_expression_stack_.clear();
     }
-    bool text_without_number_expression() {
-        return (space(true) or dash(true) or and_connector(true) or other());
+    bool text_without_number_expression(auto& node) {
+        return (space(node) or dash(node) or and_connector(node) or other(node));
     }
-    void text_without_number_expressions() {
-        while (text_without_number_expression());
+    void text_without_number_expressions(auto& node) {
+        while (text_without_number_expression(node));
     }
-    void sentence() {
-        text_without_number_expressions();
-        if (period()) {
+    void sentence(auto& node) {
+        text_without_number_expressions(node);
+        if (period(node)) {
             return;
         } else {
-            number_expression();
-            if (period()) {
+            number_expression(node);
+            if (period(node)) {
                 return;
             } else {
-                if (text_without_number_expression()) {
-                    sentence();
+                if (text_without_number_expression(node)) {
+                    sentence(node);
                 } else {
                     throw invalid_token_error{ lexer_->get_current_token() };
                 }
@@ -357,16 +302,19 @@ private:
         }
     }
     void start() {
-        sentence();
+        ast::sentence_node node{};
+        sentence(node);
+        ast_->add(std::move(node));
     }
 public:
     explicit parser(std::string text)
-        : input_text_{ std::move(text) }
+        : text_{std::move(text) }
     {}
 
     [[nodiscard]] std::string parse() {
-        lexer_ = std::make_unique<lexer>(std::move(input_text_));
+        lexer_ = std::make_unique<lexer>(std::move(text_));
+        ast_ = std::make_unique<ast::tree>();
         start();
-        return output_text_;
+        return ast_->to_string();
     }
 };

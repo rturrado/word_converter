@@ -206,7 +206,6 @@ public:
         , end_token_it_{ token_generator_.end() }
         , current_token_{ *current_token_it_ }
     {}
-
     void advance_to_next_token() {
         if (++current_token_it_ != end_token_it_) {
             current_token_ = *current_token_it_;

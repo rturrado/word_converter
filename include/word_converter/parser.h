@@ -41,10 +41,10 @@ inline static const std::unordered_map<std::string, int> word_to_number_map{
     { "seventy", 70 },
     { "eighty", 80 },
     { "ninety", 90 },
-    { "hundred", 100 },  // hundred
-    { "thousand", 1'000 },  // thousand
-    { "million", 1'000'000 },  // million
-    { "billion", 1'000'000'000 }  // billion
+    { "hundred", 100 },  // a hundred
+    { "thousand", 1'000 },  // a thousand
+    { "million", 1'000'000 },  // a million
+    { "billion", 1'000'000'000 }  // a billion
 };
 
 
@@ -308,9 +308,8 @@ private:
     }
 public:
     explicit parser(std::string text)
-        : text_{std::move(text) }
+        : text_{ std::move(text) }
     {}
-
     [[nodiscard]] std::string parse() {
         lexer_ = std::make_unique<lexer>(std::move(text_));
         ast_ = std::make_unique<ast::tree>();

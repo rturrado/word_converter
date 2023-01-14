@@ -90,7 +90,7 @@ Or execute the tests via `ctest`:
 C:\projects\word_converter\out\build\windows-msvc-debug-tests> ctest -C Debug --output-on-failure
 ```
 
-Alternatively, if you want a less verbose ouptut:
+Alternatively, if you want a less verbose output:
 ```bash
 C:\projects\word_converter\out\build\windows-msvc-debug-tests\test\Debug> .\word_converter_test.exe --gtest_brief=1
 ```
@@ -202,7 +202,7 @@ Or execute the tests via `ctest`:
 ~/projects/word_converter/out/build/unixlike-gcc-debug-tests> ctest -C Debug --output-on-failure
 ```
 
-Alternatively, if you want a less verbose ouptut:
+Alternatively, if you want a less verbose output:
 ```bash
 ~/projects/word_converter/out/build/unixlike-gcc-debug-tests/test/Debug> ./word_converter_test --gtest_brief=1
 ```
@@ -259,7 +259,7 @@ Using a library such as `boost/program_options` may have simplified the parsing.
 
 #### Input reader
 
-Three classes are defined in this file: a pure virtual base class, `input reader`, and two concrete clases, `file_reader` and
+Three classes are defined in this file: a pure virtual base class, `input reader`, and two concrete classes, `file_reader` and
 `stream_reader`.<br/>
 Each concrete class holds an input stream: `file_reader` reads from a file, and holds a file stream;
 while `stream_reader` reads from any input stream. They also implement a virtual method to retrieve a reference to that stream<br/>
@@ -276,7 +276,7 @@ Again, each concrete class holds a stream, in this case an output stream.<br/>
 The `file_writer` constructor just checks that the file stream is good. It doesn't check the file already exists.
 The base class just exposes one `write` method, which grabs the output stream and writes a text to it.
 
-##### Conversion manager
+#### Conversion manager
 
 The `conversion_manager`:
 - reads an input text from an `input_reader`,
@@ -289,6 +289,86 @@ It basically contains a static `run` function that:
 - Every input sentence that needs to be processed is sent to the `parser`, and the result of this parsing appended to an output sentence.
 - Once an input sentence has been processed, the output sentence is sent out to the different writers. 
 
-##### Lexer
+#### Tokenizer
 
-##### Parser
+The `tokenizer` receives a text upon construction, and regex searches it for different patterns (space, dash, period, or word).
+This search is done at `operator()`, a coroutine that yields the found tokens back to the caller.
+Notice that text not fitting any of the patterns will still be captured, whether as a prefix of the search operation,
+or as a remainder of the search loop, and yielded as a token of type `other`.
+Once the input text has been completely processed, an `end` token is yielded.
+
+For debugging purposes, the `tokenizer` also keeps track of a *source location*,
+an offset to the start of the returned token within the input text. 
+
+#### Lexer
+
+The `lexer` hides the `tokenizer` implementation to the `parser`, and offers:
+- two main methods: `advance_to_next_token` and `get_current_token`,
+- two helper methods: `get_current_lexeme` and `get_current_text` to access the two members of a token, and
+- two methods for debugging purposes: `get_source_text` and `get_source_location`.
+
+#### Parser
+
+The `parser`:
+- is constructed from an input text corresponding to a sentence, i.e., a text ending in a period character;
+- creates  a `lexer`, passing it this input text, and an `AST` (Abstract Syntax Tree);
+- calls a `start` method, where all the parsing is effectively done, and
+- returns an output text via the `AST`. 
+
+The `start` method is the entry point to a descendent parser implementation, based on an LL1 grammar.
+Typical descendent parser implementations define a function for each element of the grammar.
+Each of these functions can:
+- query the current token from the lexer,
+- ask the lexer for the following token,
+- match the current token against an expected token,
+- call other functions, i.e. carry on processing other elements, and
+- create new `AST` nodes and add them to the current tree.
+
+#### Abstract Syntax Tree
+
+The `AST` is implemented as a vector of 2 types of nodes:
+- text nodes, and
+- number expression nodes.
+
+Number expression nodes, likewise, are implemented as a vector of 2 types of nodes:
+- integer nodes, and
+- text nodes.
+
+The `AST` composes the output text for the `parser` by:
+- walking the vector of nodes,
+- concatenating the text nodes, and
+- for the case of a number expression, concatenating the value of the expression. 
+
+Number expressions discard all text nodes except for the last one, which separates the expression from the next text node.
+
+##### Number expression stack
+
+Number expression nodes compute the value of an expression by using a number expression stack:
+- Every _value_ from an integer node is pushed to the stack.
+- If the _value_ is bigger than the one at the top of the stack,
+we start popping elements while their sum is smaller than the new number.
+The result of multiplying the _value_ by the sum of the popped elements is pushed to the stack.
+- If the _value_ is smaller than the one at the top of the stack, it is simply pushed.
+- Once all integer nodes are traversed, the number expression value is computed as the sum of all the elements remaining in the stack.
+
+For example, given the text `three million six hundred and thirty-two thousand ninety`,
+the value of the number expression would be computed as follows:
+- Number `3` is parsed. The stack is empty, so the value is just pushed. The stack contains an element of value `3`.
+- Number `1'000'000` is parsed. The value is bigger than the one at the top of the stack, `3`.
+So we keep on popping values, and adding them, while their sum is smaller than `1'000'000`.
+Since there is only one element in the stack, only `3` is popped, and the result of multiplying `1'000'000` by `3` is pushed.
+The stack contains an element of value `3'000'000`.
+- Number `6` is parsed. The value is smaller than `3'000'000`, so it is pushed.
+The stack contains two elements of values `3'000'000` and `6`.
+- Number `100` is parsed. The value is bigger than the one at the top of the stack, `6`.
+Since `3'000'000` is bigger than `100`, we only pop the element of value `6`.
+The result of multiplying `100` times `6`, is pushed. The stack contains two elements of values `3'000'000` and `600`.
+- Number `30` is parsed. The value is smaller than `600`, so it is pushed.
+The stack contains three elements of values `3'000'000`, `600`, and `30`.
+- Number `2` is parsed. The value is smaller than `30`, so it is pushed.
+  The stack contains four elements of values `3'000'000`, `600`, `30`, and `2`.
+- Number `1'000` is parsed. The value is bigger than the one at the top of the stack, `2`.
+The elements `2`, `30`, and `600` are popped and their sum, `632`, multiplied by `1'000`.
+The result of this multiplication is added to the stack. The stack contains two elements of values `3'000'000` and `632'000`.
+- Finally, number `90` is parsed, and pushed to the stack, which ends up with three elements of values `3'000'000`, `632'000`, and `90`.
+- The value of the number expression is computed as the sum of all the elements in the stack: `3'632'090`.

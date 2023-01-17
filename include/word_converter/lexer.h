@@ -1,6 +1,7 @@
 #pragma once
 
 #include "generator.hpp"
+#include "input_reader.h"
 
 #include <cstdint>  // int64_t
 #include <fmt/format.h>
@@ -10,6 +11,7 @@
 #include <ostream>
 #include <unordered_map>
 #include <string>
+#include <string_view>
 
 
 enum class lexeme_t {
@@ -18,10 +20,10 @@ enum class lexeme_t {
     two_to_nine,  // two, three, four, five, six, seven, eight, nine
     ten_to_nineteen,  // ten, eleven, twelve, thirteen, fourteen, fifteen, sixteen, seventeen, eighteen, nineteen
     tens,  // twenty, thirty, forty, fifty, sixty, seventy, eighty, ninety
-    hundred,  // hundred
-    thousand,  // thousand
-    million,  // million
-    billion,  // billion
+    hundred,  // a hundred
+    thousand,  // a thousand
+    million,  // a million
+    billion,  // a billion
     and_connector,  // and
     space,  // whitespace, tab, newline...
     dash,  // '-'
@@ -106,63 +108,45 @@ inline static const std::unordered_map<std::string, lexeme_t> word_to_lexeme_map
     { "seventy", lexeme_t::tens },
     { "eighty", lexeme_t::tens },
     { "ninety", lexeme_t::tens },
-    { "hundred", lexeme_t::hundred },  // hundred
-    { "thousand", lexeme_t::thousand },  // thousand
-    { "million", lexeme_t::million },  // million
-    { "billion", lexeme_t::billion },  // billion
+    { "hundred", lexeme_t::hundred },  // a hundred
+    { "thousand", lexeme_t::thousand },  // a thousand
+    { "million", lexeme_t::million },  // a million
+    { "billion", lexeme_t::billion },  // a billion
     { "and", lexeme_t::and_connector }  // and
 };
 
 
 class tokenizer {
-    std::string text_{};
-    std::int64_t source_location_{};
-public:
-    explicit tokenizer(std::string text)
-        : text_{ std::move(text) }
-    {}
-    [[nodiscard]] auto get_source_text() const {
-        return text_;
-    }
-    [[nodiscard]] auto get_source_location() const {
-        return source_location_;
-    }
-    [[nodiscard]] std::generator<token_t> operator()() {
-        std::string text{ text_ };
-        std::string space_pattern{ R"([ \t\r\n]+)" };
-        std::string dash_pattern{ R"(\-)" };
-        std::string period_pattern{ R"(\.)" };
-        std::string word_pattern{ R"([a-zA-Z]+)" };
-        std::regex pattern{ fmt::format("({})|({})|({})|({})",
+    input_reader_up reader_{};
+private:
+    [[nodiscard]] static std::generator<token_t> get_next_token(std::string sentence) {
+        std::string_view space_pattern{ R"([ \t\r\n]+)" };
+        std::string_view dash_pattern{ R"(\-)" };
+        std::string_view period_pattern{ R"(\.)" };
+        std::string_view word_pattern{ R"([a-zA-Z]+)" };
+        static const std::regex pattern{ fmt::format("({})|({})|({})|({})",
             space_pattern,  // 1
             dash_pattern,  // 2
             period_pattern,  // 3
             word_pattern  // 4
         )};
         std::smatch sm{};
-        while (std::regex_search(text, sm, pattern)) {
+        while (std::regex_search(sentence, sm, pattern)) {
             const auto& prefix{ sm.prefix().str() };
             if (not prefix.empty()) {  // other
                 token_t ret{ lexeme_t::other, prefix };
                 co_yield ret;
             }
             if (sm[1].matched) {  // space
-                source_location_ += sm.position(1);
                 token_t ret{ lexeme_t::space, sm[1].str() };
                 co_yield ret;
-                source_location_ += sm.length(1);
             } else if (sm[2].matched) {  // dash
-                source_location_ += sm.position(2);
                 token_t ret{ lexeme_t::dash, sm[2].str() };
                 co_yield ret;
-                source_location_ += sm.length(2);
             } else if (sm[3].matched) {  // period
-                source_location_ += sm.position(3);
                 token_t ret{ lexeme_t::period, sm[3].str() };
                 co_yield ret;
-                source_location_ += sm.length(3);
             } else if (sm[4].matched) {  // word
-                source_location_ += sm.position(4);
                 const auto &word{ sm[4].str() };
                 auto word_lc{ rtc::string::to_lowercase(word) };
                 if (word_to_lexeme_map.contains(word_lc)) {
@@ -172,14 +156,24 @@ public:
                     token_t ret{ lexeme_t::other, word };
                     co_yield ret;
                 }
-                source_location_ += sm.length(4);
             }
-            text = sm.suffix();
+            sentence = sm.suffix();
         }
-        if (not text.empty()) {  // other
-            token_t ret{ lexeme_t::other, text };
+        if (not sentence.empty()) {  // other
+            token_t ret{ lexeme_t::other, sentence };
             co_yield ret;
-            source_location_ += std::ssize(text);
+        }
+    }
+public:
+    explicit tokenizer(input_reader_up reader)
+        : reader_{ std::move(reader) }
+    {}
+    [[nodiscard]] std::generator<token_t> operator()() {
+        while (not reader_->eof()) {
+            std::string sentence{ reader_->read() };
+            for (auto&& token : get_next_token(std::move(sentence))) {
+                co_yield token;
+            }
         }
         token_t ret{ lexeme_t::end, {} };
         co_yield ret;
@@ -192,15 +186,14 @@ class lexer {
     using generator_iter_t = decltype(std::declval<generator_t>().begin());
     using generator_sentinel_t =decltype(std::declval<generator_t>().end());
 private:
-    std::string text_{};
     tokenizer tokenizer_;
     generator_t token_generator_;
     generator_iter_t current_token_it_;
     generator_sentinel_t end_token_it_;
     token_t current_token_;
 public:
-    explicit lexer(std::string text)
-        : tokenizer_{ std::move(text) }
+    explicit lexer(input_reader_up reader)
+        : tokenizer_{ std::move(reader) }
         , token_generator_{ tokenizer_() }
         , current_token_it_{ token_generator_.begin() }
         , end_token_it_{ token_generator_.end() }
@@ -219,11 +212,5 @@ public:
     }
     [[nodiscard]] auto get_current_text() const {
         return current_token_.text;
-    }
-    [[nodiscard]] auto get_source_text() const {
-        return tokenizer_.get_source_text();
-    }
-    [[nodiscard]] auto get_source_location() const {
-        return tokenizer_.get_source_location();
     }
 };

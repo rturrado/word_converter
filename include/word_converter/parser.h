@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ast.h"
+#include "input_reader.h"
 #include "lexer.h"
 
 #include <fmt/core.h>
@@ -49,17 +50,16 @@ inline static const std::unordered_map<std::string, int> word_to_number_map{
 
 
 struct invalid_token_error : public std::runtime_error {
-    explicit invalid_token_error(const token_t& t) : std::runtime_error{ "" } {
-        message_ += fmt::format("'{}'", t);
+    invalid_token_error(const token_t& token, const std::string& node_str) : std::runtime_error{ "" } {
+        message_ = fmt::format("invalid token: '{}', while parsing node: '{}'", token, node_str);
     }
     [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); };
 private:
-    std::string message_{ "invalid token: " };
+    std::string message_{};
 };
 
 
 class parser {
-    std::string text_{};  // text to parse
     std::unique_ptr<lexer> lexer_{};
     std::unique_ptr<ast::tree> ast_{};
 private:
@@ -71,6 +71,9 @@ private:
         }
     }
 private:
+    [[nodiscard]] bool end() {
+        return (lexer_->get_current_lexeme() == lexeme_t::end);
+    }
     [[nodiscard]] bool space(auto& node) {
         if (lexer_->get_current_lexeme() == lexeme_t::space) {
             node.add(ast::text_node{ lexer_->get_current_text() });
@@ -266,54 +269,61 @@ private:
         }
         return false;
     }
-    void number_expression(auto& parent_node) {
-        auto start_source_location{ lexer_->get_source_location() };
+    [[nodiscard]] bool number_expression(auto& parent_node) {
         ast::number_expression_node node{};
         if (zero(node) or billions(node)) {
             parent_node.add(std::move(node));
-        } else {
-            auto end_source_location{ lexer_->get_source_location() };
-            auto source_sub_expression{ lexer_->get_source_text().substr(
-                start_source_location, end_source_location - start_source_location ) };
-            throw invalid_number_expression_error{ source_sub_expression };
+            return true;
         }
+        return false;
     }
-    bool text_without_number_expression(auto& node) {
+    [[nodiscard]] bool text_without_number_expression(auto& node) {
         return (space(node) or dash(node) or and_connector(node) or other(node));
     }
-    void text_without_number_expressions(auto& node) {
+    [[nodiscard]] bool text_without_number_expressions(auto& node) {
         while (text_without_number_expression(node));
+        return true;
     }
-    void sentence(auto& node) {
-        text_without_number_expressions(node);
-        if (period(node)) {
-            return;
-        } else {
-            number_expression(node);
-            if (period(node)) {
-                return;
+    [[nodiscard]] bool rest_of_sentence_body(auto& node) {
+        return end() or
+            period(node) or
+            (text_without_number_expression(node) and sentence(node));
+    }
+    [[nodiscard]] bool sentence_body(auto& node) {
+        return end() or
+            period(node) or
+            (number_expression(node) and rest_of_sentence_body(node));
+    }
+    [[nodiscard]] bool sentence_prefix(auto& node) {
+        return (text_without_number_expressions(node));
+    }
+    [[nodiscard]] bool sentence(auto& node) {
+        return (sentence_prefix(node) and sentence_body(node));
+    }
+
+    void sentences() {
+        while (not end()) {
+            ast::sentence_node node{};
+            if (sentence(node)) {
+                ast_->add(std::move(node));
             } else {
-                if (text_without_number_expression(node)) {
-                    sentence(node);
-                } else {
-                    throw invalid_token_error{ lexer_->get_current_token() };
-                }
+                throw invalid_token_error{ lexer_->get_current_token(), node.dump() };
             }
         }
     }
     void start() {
-        ast::sentence_node node{};
-        sentence(node);
-        ast_->add(std::move(node));
+        sentences();
     }
 public:
-    explicit parser(std::string text)
-        : text_{ std::move(text) }
+    explicit parser(input_reader_up reader)
+        : lexer_{ std::make_unique<lexer>(std::move(reader)) }
+        , ast_{ std::make_unique<ast::tree>() }
     {}
     [[nodiscard]] std::string parse() {
-        lexer_ = std::make_unique<lexer>(std::move(text_));
-        ast_ = std::make_unique<ast::tree>();
         start();
-        return ast_->to_string();
+        return ast_->evaluate();
     }
 };
+
+
+using parser_up = std::unique_ptr<parser>;

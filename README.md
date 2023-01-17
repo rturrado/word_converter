@@ -239,10 +239,11 @@ The `main` function logic is quite simple:
 - Parses the command line options.
 - Creates an input reader.
 - Creates a stream output writer (that will write to standard output), and, if requested by the user, a file output writer.
-- Runs the conversion manager, passing it the reader and the writers.
+- Creates a parser, passing the input reader as an argument, and calls its parse method to receive the parsed text.
+- Sends the parsed text to the output writers.
 
-Exceptions thrown whether during the parsing of the command line options, or while creating the reader or the writers, are captured,
-and make the program terminate.<br/>
+Exceptions thrown whether during the parsing of the command line options, while creating the reader or the writers, or by the parser,
+are captured, and make the program terminate.<br/>
 Both readers and writers are implemented as runtime polymorphic objects. A pure virtual base class, e.g. `input_reader` defines an interface,
 and concrete classes, e.g. `file_reader`, implement that interface.
 Using polymorphic readers is not mandatory for the task, but makes the implementation symmetric to that of the writers.
@@ -276,44 +277,27 @@ Again, each concrete class holds a stream, in this case an output stream.<br/>
 The `file_writer` constructor just checks that the file stream is good. It doesn't check the file already exists.
 The base class just exposes one `write` method, which grabs the output stream and writes a text to it.
 
-#### Conversion manager
-
-The `conversion_manager`:
-- reads an input text from an `input_reader`,
-- processes it using a `parser`, and
-- writes it out to a list of `output_writer`s.
-
-It basically contains a static `run` function that:
-- Keeps reading sentences from an `input_reader` until the end of the file is reached.
-- Texts that do not form a sentence (i.e. that do not end in a period) are not converted. All the texts are written out though.
-- Every input sentence that needs to be processed is sent to the `parser`, and the result of this parsing appended to an output sentence.
-- Once an input sentence has been processed, the output sentence is sent out to the different writers. 
-
 #### Tokenizer
 
-The `tokenizer` receives a text upon construction, and regex searches it for different patterns (space, dash, period, or word).
-This search is done at `operator()`, a coroutine that yields the found tokens back to the caller.
+The `tokenizer` receives an `input_reader` upon construction, and keeps reading sentences from it until the end of the stream is reached.
+Every sentence is regex searched for different patterns (space, dash, period, or word).
+The reading of sentences is done at `operator()`, and the regex searches at `get_next_token()`.
+Both methods form a nested coroutine that yields the found tokens back to the caller.
 Notice that text not fitting any of the patterns will still be captured, whether as a prefix of the search operation,
 or as a remainder of the search loop, and yielded as a token of type `other`.
-Once the input text has been completely processed, an `end` token is yielded.
-
-For debugging purposes, the `tokenizer` also keeps track of a *source location*,
-an offset to the start of the returned token within the input text. 
+Once the stream has been completely processed, an `end` token is yielded.
 
 #### Lexer
 
 The `lexer` hides the `tokenizer` implementation to the `parser`, and offers:
-- two main methods: `advance_to_next_token` and `get_current_token`,
-- two helper methods: `get_current_lexeme` and `get_current_text` to access the two members of a token, and
-- two methods for debugging purposes: `get_source_text` and `get_source_location`.
+- two main methods: `advance_to_next_token` and `get_current_token`, and
+- two helper methods: `get_current_lexeme` and `get_current_text` to access the two members of a token.
 
 #### Parser
 
-The `parser`:
-- is constructed from an input text corresponding to a sentence, i.e., a text ending in a period character;
-- creates  a `lexer`, passing it this input text, and an `AST` (Abstract Syntax Tree);
-- calls a `start` method, where all the parsing is effectively done, and
-- returns an output text via the `AST`. 
+The `parser` is constructed from an `input_reader`, and creates  a `lexer`, passing it this input reader,
+and an `AST` (Abstract Syntax Tree). The `parse` method calls a `start` method, where all the parsing is effectively done, and
+returns an output text via the `AST`. 
 
 The `start` method is the entry point to a descendent parser implementation, based on an LL1 grammar.
 Typical descendent parser implementations define a function for each element of the grammar.
@@ -326,15 +310,13 @@ Each of these functions can:
 
 #### Abstract Syntax Tree
 
-The `AST` is implemented as a vector of 2 types of nodes:
-- text nodes, and
-- number expression nodes.
+The `AST` is implemented as a vector of sentence nodes.
+Likewise, a sentence node is implemented as a vector of two types of nodes: text nodes, or number expression nodes.
+And number expression nodes, again, are lists of possibly two types of nodes: text nodes, or integer nodes.
 
-Number expression nodes, likewise, are implemented as a vector of 2 types of nodes:
-- integer nodes, and
-- text nodes.
-
-The `AST` composes the output text for the `parser` by:
+The `AST` offers two APIs: `dump()` and `evaluate()`. The only difference between these two methods is at the number expressions level.
+Dumping a number expression returns the original input text for that expression.
+While evaluating a number expression performs the conversion from words to numbers.  The `AST` performs this evaluation by:
 - walking the vector of nodes,
 - concatenating the text nodes, and
 - for the case of a number expression, concatenating the value of the expression. 

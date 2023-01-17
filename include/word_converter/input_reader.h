@@ -72,3 +72,6 @@ private:
         return is_;
     }
 };
+
+
+using input_reader_up = std::unique_ptr<input_reader>;

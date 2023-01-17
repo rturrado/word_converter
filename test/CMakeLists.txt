@@ -27,7 +27,6 @@ FetchContent_MakeAvailable(
 set(test_sources
     "${CMAKE_CURRENT_SOURCE_DIR}/ast.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/command_line_parser.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/conversion_manager.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/input_reader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lexer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/output_writer.cpp"

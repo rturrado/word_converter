@@ -5,17 +5,54 @@
 #include <numeric>  // accumulate
 #include <stdexcept>  // runtime_error
 #include <string>  // to_string
+#include <unordered_map>
 #include <variant>  // visit
 #include <vector>
 
 
+inline static const std::unordered_map<int, std::string> number_to_word_map{
+    { 0, "zero" },  // zero
+    { 1, "one" },  // one
+    { 2, "two" },  // two to nine
+    { 3, "three" },
+    { 4, "four" },
+    { 5, "five" },
+    { 6, "six" },
+    { 7, "seven" },
+    { 8, "eight" },
+    { 9, "nine" },
+    { 10, "ten" },  // ten to nineteen
+    { 11, "eleven" },
+    { 12, "twelve" },
+    { 13, "thirteen" },
+    { 14, "fourteen" },
+    { 15, "fifteen" },
+    { 16, "sixteen" },
+    { 17, "seventeen" },
+    { 18, "eighteen" },
+    { 19, "nineteen" },
+    { 20, "twenty" },  // tens
+    { 30, "thirty" },
+    { 40, "forty" },
+    { 50, "fifty" },
+    { 60, "sixty" },
+    { 70, "seventy" },
+    { 80, "eighty" },
+    { 90, "ninety" },
+    { 100, "hundred" },  // a hundred
+    { 1'000, "thousand" },  // a thousand
+    { 1'000'000, "million" },  // a million
+    { 1'000'000'000, "billion" }  // a billion
+};
+
+
 struct invalid_number_expression_error : public std::runtime_error {
-    explicit invalid_number_expression_error(const std::string& message) : std::runtime_error{ "" } {
-        message_ += fmt::format("'{}'", message);
+    explicit invalid_number_expression_error(const std::string& number_expression_str) : std::runtime_error{ "" } {
+        message_ += fmt::format("'{}'", number_expression_str);
     }
     [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); };
 private:
-    std::string message_{ "invalid number expression error: " };
+    std::string message_{ "invalid number expression: " };
 };
 
 
@@ -51,19 +88,21 @@ namespace ast {
 struct text_node {
     std::string data{};
     explicit text_node(std::string text) : data{ std::move(text) } {}
-    [[nodiscard]] std::string to_string() const { return data; }
+    [[nodiscard]] std::string dump() const { return data; }
+    [[nodiscard]] std::string evaluate() const { return data; }
 };
 
 
 struct int_node {
     int data{};
     explicit int_node(int value) : data{ value } {}
-    [[nodiscard]] std::string to_string() const { return std::to_string(data); }
+    [[nodiscard]] std::string dump() const { return number_to_word_map.at(data); }
+    [[nodiscard]] std::string evaluate() const { return std::to_string(data); }
 };
 
 
 class number_expression_node {
-    using node_t = std::variant<int_node, text_node>;
+    using node_t = std::variant<text_node, int_node>;
     using nodes_t = std::vector<node_t>;
 private:
     nodes_t nodes_{};
@@ -80,7 +119,14 @@ public:
         });
         return numbers_stack.value();
     }
-    [[nodiscard]] std::string to_string() const {
+    [[nodiscard]] std::string dump() const {
+        std::string ret{};
+        std::ranges::for_each(nodes_, [&ret](auto&& node) {
+            std::visit([&ret](auto&& arg) { ret += arg.dump(); }, node);
+        });
+        return ret;
+    }
+    [[nodiscard]] std::string evaluate() const {
         if (nodes_.empty()) {
             return {};
         }
@@ -103,10 +149,17 @@ public:
     void add(node_t n) {
         nodes_.push_back(std::move(n));
     }
-    [[nodiscard]] std::string to_string() const {
+    [[nodiscard]] std::string dump() const {
         std::string ret{};
         std::ranges::for_each(nodes_, [&ret](auto&& node) {
-            std::visit([&ret](auto&& arg) { ret += arg.to_string(); }, node);
+            std::visit([&ret](auto&& arg) { ret += arg.dump(); }, node);
+        });
+        return ret;
+    }
+    [[nodiscard]] std::string evaluate() const {
+        std::string ret{};
+        std::ranges::for_each(nodes_, [&ret](auto&& node) {
+            std::visit([&ret](auto&& arg) { ret += arg.evaluate(); }, node);
         });
         return ret;
     }
@@ -114,13 +167,23 @@ public:
 
 
 class tree {
-    sentence_node start_;
+    using node_t = sentence_node;
+    using nodes_t = std::vector<node_t>;
+private:
+    nodes_t nodes_{};
 public:
-    void add(sentence_node n) {
-        start_ = std::move(n);
+    void add(node_t n) {
+        nodes_.push_back(std::move(n));
     }
-    [[nodiscard]] std::string to_string() const {
-        return start_.to_string();
+    [[nodiscard]] std::string dump() const {
+        return std::accumulate(nodes_.begin(), nodes_.end(), std::string{}, [](const auto& total, const auto& node) {
+            return total + node.dump();
+        });
+    }
+    [[nodiscard]] std::string evaluate() const {
+        return std::accumulate(nodes_.begin(), nodes_.end(), std::string{}, [](const auto& total, const auto& node) {
+            return total + node.evaluate();
+        });
     }
 };
 

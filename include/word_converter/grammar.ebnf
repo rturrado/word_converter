@@ -1,11 +1,17 @@
-start                           ::= sentence
+start                           ::= sentences
+
+sentences                       ::= sentence rest_of_sentences
+rest_of_sentences               ::= sentences
+                                  | nothing
 
 sentence                        ::= sentence_prefix sentence_body
 sentence_prefix                 ::= text_without_number_expressions
 sentence_body                   ::= number_expression rest_of_sentence_body
                                   | period
+                                  | end
 rest_of_sentence_body           ::= text_without_number_expression sentence_body
                                   | period
+                                  | end
 
 text_without_number_expressions ::= text_without_number_expression text_without_number_expressions
                                   | nothing

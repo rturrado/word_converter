@@ -56,3 +56,6 @@ private:
         return os_;
     }
 };
+
+
+using output_writer_up = std::unique_ptr<output_writer>;
